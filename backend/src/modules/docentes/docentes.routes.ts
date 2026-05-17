@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { DocentesController } from './docentes.controller';
 import { middlewareAutenticacion } from '@/middleware/autenticacion';
 
-const router = Router();
+const router: ExpressRouter = Router();
 router.use(middlewareAutenticacion);
 
 router.get('/', DocentesController.listar);

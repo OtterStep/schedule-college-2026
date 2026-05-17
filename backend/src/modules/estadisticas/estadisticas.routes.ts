@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { EstadisticasController } from './estadisticas.controller';
 import { middlewareAutenticacion } from '@/middleware/autenticacion';
 
-const router = Router();
+const router: ExpressRouter = Router();
 router.use(middlewareAutenticacion);
 
 router.get('/resumen', EstadisticasController.resumen);

@@ -2,6 +2,11 @@
 node_modules/
 .pnp/
 .pnp.js
+.venv/
+
+# Archivos no pertenecientes al sistema
+Horarios_KIMI.pdf
+Horarios_KIMI.txt
 
 # Archivos de entorno (contienen contraseñas y tokens)
 .env

@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { AuthController } from './auth.controller';
 import { middlewareAutenticacion } from '@/middleware/autenticacion';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // Rutas públicas
 router.post('/login', AuthController.login);

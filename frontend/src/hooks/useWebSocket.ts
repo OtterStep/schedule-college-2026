@@ -5,7 +5,9 @@ export function useWebSocket(onMensaje: (data: any) => void) {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL + '/ws' || 'ws://localhost:4000/ws');
+    const wsBaseUrl = process.env.NEXT_PUBLIC_WS_URL;
+    const wsUrl = wsBaseUrl ? `${wsBaseUrl}/ws` : 'ws://localhost:4000/ws';
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {

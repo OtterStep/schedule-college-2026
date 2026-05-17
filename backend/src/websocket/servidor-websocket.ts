@@ -26,14 +26,25 @@ export function iniciarWebSocket(server: HttpServer) {
 
   // Suscribirse al canal de Redis para disponibilidad
   const subscriber = redis.duplicate();
-  subscriber.subscribe('canal:disponibilidad');
-  subscriber.on('message', (canal: string, mensaje: string) => {
-    if (canal === 'canal:disponibilidad') {
-      wss.clients.forEach((cliente) => {
-        if (cliente.readyState === WebSocket.OPEN) {
-          cliente.send(mensaje);
+  subscriber.on('error', () => {
+    console.log('Redis no disponible para WebSocket.');
+  });
+
+  void subscriber
+    .connect()
+    .then(async () => {
+      await subscriber.subscribe('canal:disponibilidad');
+      subscriber.on('message', (canal: string, mensaje: string) => {
+        if (canal === 'canal:disponibilidad') {
+          wss.clients.forEach((cliente) => {
+            if (cliente.readyState === WebSocket.OPEN) {
+              cliente.send(mensaje);
+            }
+          });
         }
       });
-    }
-  });
+    })
+    .catch(() => {
+      console.log('No se pudo conectar a Redis para WebSocket.');
+    });
 }

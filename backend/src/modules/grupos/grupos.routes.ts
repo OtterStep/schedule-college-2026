@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { GruposController } from './grupos.controller';
 import { middlewareAutenticacion } from '@/middleware/autenticacion';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // Todas las rutas requieren autenticación
 router.use(middlewareAutenticacion);

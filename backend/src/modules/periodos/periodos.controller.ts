@@ -17,14 +17,14 @@ export class PeriodosController {
 
   static async crear(req: Request, res: Response) {
     const datos = crearPeriodoSchema.parse(req.body);
-    const periodo = await PeriodosService.crear(datos);
+    const periodo = await PeriodosService.crear(datos as any);
     res.status(201).json(periodo);
   }
 
   static async actualizar(req: Request, res: Response) {
     const id = parseInt(req.params.id);
     const datos = actualizarPeriodoSchema.parse(req.body);
-    const periodo = await PeriodosService.actualizar(id, datos);
+    const periodo = await PeriodosService.actualizar(id, datos as any);
     res.json(periodo);
   }
 

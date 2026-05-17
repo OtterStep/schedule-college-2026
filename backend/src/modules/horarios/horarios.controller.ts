@@ -42,7 +42,7 @@ export class HorariosController {
   static async deseleccionarCelda(req: Request, res: Response) {
     try {
       const datos = deseleccionarCeldaSchema.parse(req.body);
-      const resultado = await HorariosService.deseleccionarCelda(datos);
+      const resultado = await HorariosService.deseleccionarCelda(datos as any);
       res.json(resultado);
     } catch (error: any) {
       if (error.name === 'ZodError') {

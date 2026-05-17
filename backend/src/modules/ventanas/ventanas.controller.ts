@@ -6,7 +6,7 @@ export class VentanasController {
   static async configurar(req: Request, res: Response) {
     try {
       const datos = configurarVentanasSchema.parse(req.body);
-      const ventanas = await VentanasService.configurar(datos.idPeriodo, datos.dias);
+      const ventanas = await VentanasService.configurar(datos.idPeriodo, datos.dias as any);
       res.status(201).json(ventanas);
     } catch (error: any) {
       if (error.name === 'ZodError') {

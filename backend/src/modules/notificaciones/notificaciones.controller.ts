@@ -61,7 +61,7 @@ export class NotificacionesController {
   static async enviar(req: Request, res: Response) {
     try {
       const datos = enviarNotificacionSchema.parse(req.body);
-      await NotificacionesService.encolarEnvio(datos);
+      await NotificacionesService.encolarEnvio(datos as any);
       res.json({ mensaje: 'Notificación encolada' });
     } catch (error: any) {
       if (error.name === 'ZodError') {

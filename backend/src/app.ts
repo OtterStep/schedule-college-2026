@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -16,7 +16,7 @@ import rutasEstadisticas from './modules/estadisticas/estadisticas.routes';
 import rutasReportes from './modules/reportes/reportes.routes';
 import rutasNotificaciones from './modules/notificaciones/notificaciones.routes';
 
-const app = express();
+const app: Express = express();
 
 // Middlewares globales
 app.use(cors());
