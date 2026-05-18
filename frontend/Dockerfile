@@ -13,13 +13,14 @@ ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 RUN pnpm build
 RUN pnpm prune --prod
 
-FROM node:20-alpine
+FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/.next ./.next
+
 COPY --from=build /app/public ./public
-COPY --from=build /app/next.config.js ./next.config.js
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/node_modules ./node_modules
+# Automatically leverage output traces to reduce image size
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+
 EXPOSE 3000
-CMD ["node", "node_modules/next/dist/bin/next", "start"]
+CMD ["node", "server.js"]

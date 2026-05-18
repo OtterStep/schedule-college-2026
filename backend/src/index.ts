@@ -19,8 +19,12 @@ async function main() {
   try {
     await redis.connect();
     console.log('Conectado a Redis');
-  } catch {
-    console.log('Redis no disponible, continuando sin Redis...');
+  } catch (err: any) {
+    if (err.message.includes('already connecting') || err.message.includes('already connected')) {
+      console.log('Conectado a Redis (automáticamente)');
+    } else {
+      console.log('Redis no disponible, continuando sin Redis... Error:', err.message);
+    }
   }
 
   const server = http.createServer(app);

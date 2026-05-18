@@ -24,21 +24,16 @@ import Redis from 'ioredis';
 import { configuracionRedis } from '@/config/redis';
 
 const redis = new Redis(configuracionRedis.url, {
-  lazyConnect: true,
-
-  // Evita reconexiones infinitas
-  retryStrategy() {
-    return null;
+  maxRetriesPerRequest: 3,
+  retryStrategy(times) {
+    const delay = Math.min(times * 50, 2000);
+    return delay;
   },
-
-  // Evita errores MaxRetriesPerRequest
-  maxRetriesPerRequest: null,
-
-  enableOfflineQueue: false,
+  lazyConnect: true,
 });
 
-redis.on('error', () => {
-  console.log('Redis no disponible.');
+redis.on('error', (err: any) => {
+  console.log('Error en Redis (puede ser normal en inicio):', err.message);
 });
 
 export { redis };
