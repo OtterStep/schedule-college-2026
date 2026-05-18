@@ -11,6 +11,7 @@ router.post('/', PeriodosController.crear);
 router.get('/:id', PeriodosController.obtener);
 router.put('/:id', PeriodosController.actualizar);
 router.delete('/:id', PeriodosController.eliminar);
+router.put('/:id/reactivar', PeriodosController.reactivar);
 router.patch('/:id/estado', PeriodosController.cambiarEstado);
 
 export default router;

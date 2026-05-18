@@ -31,7 +31,13 @@ export class PeriodosController {
   static async eliminar(req: Request, res: Response) {
     const id = parseInt(req.params.id);
     await PeriodosService.eliminar(id);
-    res.json({ mensaje: 'Período eliminado' });
+    res.json({ mensaje: 'Período desactivado' });
+  }
+
+  static async reactivar(req: Request, res: Response) {
+    const id = parseInt(req.params.id);
+    const periodo = await PeriodosService.reactivar(id);
+    res.json(periodo);
   }
 
   static async cambiarEstado(req: Request, res: Response) {

@@ -17,6 +17,7 @@ router.post('/', AmbientesController.crear);
 router.get('/:id', AmbientesController.obtener);
 router.put('/:id', AmbientesController.actualizar);
 router.delete('/:id', AmbientesController.eliminar);
+router.put('/:id/reactivar', AmbientesController.reactivar);
 
 // Disponibilidad y mantenimiento
 router.get('/:id/disponibilidad', AmbientesController.obtenerDisponibilidad);
