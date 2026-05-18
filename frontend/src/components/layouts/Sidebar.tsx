@@ -42,7 +42,7 @@ export function Sidebar() {
   ];
 
   const enlacesDocente = [
-    { href: '/dashboard', etiqueta: 'Dashboard', Icono: LayoutDashboard },
+    { href: '/dashboard/docente', etiqueta: 'Dashboard', Icono: LayoutDashboard },
     { href: '/dashboard/horarios/seleccion', etiqueta: 'Elegir Horario', Icono: CheckSquare },
     { href: '/dashboard/horarios/vista-docente', etiqueta: 'Mi Horario', Icono: Eye },
     { href: '/dashboard/notificaciones/preferencias', etiqueta: 'Notificaciones', Icono: BellRing },
@@ -96,4 +96,4 @@ export function Sidebar() {
       </div>
     </aside>
   );
-}
+}

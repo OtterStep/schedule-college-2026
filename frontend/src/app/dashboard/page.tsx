@@ -1,14 +1,19 @@
 'use client';
-import DashboardPage from '@/components/dashboard/page';
-import VistaHorarioDocentePage from '@/components/dashboard/horarios/vista-docente/page';
-import { useAuthStore } from '@/stores/auth.store';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { SpinnerCarga } from '@/components/ui/SpinnerCarga';
+import { useAuthStore } from '@/stores/auth.store';
 
 export default function Dashboard() {
+	const router = useRouter();
 	const { usuario, estaCargando } = useAuthStore();
 
-	if (estaCargando) return <SpinnerCarga />;
-	if (usuario?.rol === 'PROFESOR') return <VistaHorarioDocentePage />;
+	useEffect(() => {
+		if (!estaCargando && usuario) {
+			router.replace(usuario.rol === 'PROFESOR' ? '/dashboard/docente' : '/dashboard/admin');
+		}
+	}, [estaCargando, router, usuario]);
 
-	return <DashboardPage />;
+	return <SpinnerCarga />;
 }
