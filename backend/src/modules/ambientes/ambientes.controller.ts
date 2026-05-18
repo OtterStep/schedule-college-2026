@@ -90,6 +90,19 @@ export class AmbientesController {
     }
   }
 
+  static async reactivar(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+
+      const ambiente = await AmbientesService.reactivar(id);
+      res.json(ambiente);
+    } catch (error) {
+      console.error('Error al reactivar ambiente:', error);
+      res.status(500).json({ error: 'Error al reactivar el ambiente' });
+    }
+  }
+
   /**
    * GET /api/ambientes/por-tipo/:tipo
    */

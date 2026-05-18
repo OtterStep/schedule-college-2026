@@ -16,5 +16,6 @@ router.post('/', GruposController.crear);
 router.get('/:id', GruposController.obtener);
 router.put('/:id', GruposController.actualizar);
 router.delete('/:id', GruposController.eliminar);
+router.put('/:id/reactivar', GruposController.reactivar);
 
 export default router;

@@ -94,13 +94,23 @@ export class GruposController {
       if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
 
       await GruposService.eliminar(id);
-      res.json({ mensaje: 'Grupo eliminado correctamente' });
-    } catch (error: any) {
-      if (error.message === 'No se puede eliminar el grupo porque tiene horarios asignados') {
-        return res.status(409).json({ error: error.message });
-      }
+      res.json({ mensaje: 'Grupo desactivado correctamente' });
+    } catch (error) {
       console.error('Error al eliminar grupo:', error);
       res.status(500).json({ error: 'Error al eliminar el grupo' });
+    }
+  }
+
+  static async reactivar(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+
+      const grupo = await GruposService.reactivar(id);
+      res.json(grupo);
+    } catch (error) {
+      console.error('Error al reactivar grupo:', error);
+      res.status(500).json({ error: 'Error al reactivar el grupo' });
     }
   }
 
