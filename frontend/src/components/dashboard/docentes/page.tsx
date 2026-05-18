@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { CampoTexto } from '@/components/ui/CampoTexto';
 import { Selector } from '@/components/ui/Selector';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
+import { useAuthStore } from '@/stores/auth.store';
 
 const columnas = [
   { clave: 'nombres', titulo: 'Nombres' },
@@ -38,6 +39,8 @@ const columnas = [
 
 export default function DocentesPage() {
   const queryClient = useQueryClient();
+  const usuario = useAuthStore(state => state.usuario);
+  const esAdmin = usuario?.rol === 'ADMINISTRADOR';
   const [buscar, setBuscar] = useState('');
   const [modalAbierto, setModalAbierto] = useState(false);
   const [docenteEditando, setDocenteEditando] = useState<any>(null);
@@ -160,9 +163,11 @@ export default function DocentesPage() {
             onChange={(e) => setBuscar(e.target.value)}
             className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-unt-accent/30 focus:border-unt-accent transition-all bg-white shadow-sm"
           />
-          <Boton onClick={abrirModalCrear}>
-            Nuevo Docente
-          </Boton>
+          {esAdmin && (
+            <Boton onClick={abrirModalCrear}>
+              Nuevo Docente
+            </Boton>
+          )}
         </div>
       </div>
 

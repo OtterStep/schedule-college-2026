@@ -1,3 +1,7 @@
+'use client';
+
+import { useAuthStore } from '@/stores/auth.store';
+
 interface Columna {
   clave: string;
   titulo: string;
@@ -13,6 +17,9 @@ interface TablaDatosProps {
 }
 
 export function TablaDatos({ columnas, datos, alHacerClick, alEditar, alEliminar }: TablaDatosProps) {
+  const usuario = useAuthStore(state => state.usuario);
+  const esAdmin = usuario?.rol === 'ADMINISTRADOR';
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-white border border-gray-200">
@@ -23,7 +30,7 @@ export function TablaDatos({ columnas, datos, alHacerClick, alEditar, alEliminar
                 {col.titulo}
               </th>
             ))}
-            {(alEditar || alEliminar) && (
+            {(esAdmin && (alEditar || alEliminar)) && (
               <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
                 Acciones
               </th>
@@ -42,7 +49,7 @@ export function TablaDatos({ columnas, datos, alHacerClick, alEditar, alEliminar
                   {col.render ? col.render(item) : item[col.clave]}
                 </td>
               ))}
-              {(alEditar || alEliminar) && (
+              {(esAdmin && (alEditar || alEliminar)) && (
                 <td className="px-4 py-2 text-sm">
                   <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                     {alEditar && (

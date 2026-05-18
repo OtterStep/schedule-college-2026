@@ -29,6 +29,7 @@ export function Sidebar() {
     { href: '/dashboard', etiqueta: 'Dashboard', Icono: LayoutDashboard },
     { href: '/dashboard/periodos', etiqueta: 'Períodos', Icono: Calendar },
     { href: '/dashboard/docentes', etiqueta: 'Docentes', Icono: Users },
+    { href: '/dashboard/usuarios', etiqueta: 'Usuarios', Icono: Users },
     { href: '/dashboard/cursos', etiqueta: 'Cursos', Icono: BookOpen },
     { href: '/dashboard/ambientes', etiqueta: 'Ambientes', Icono: School },
     { href: '/dashboard/horarios/ventanas/configurar', etiqueta: 'Ventanas', Icono: Clock },
@@ -42,6 +43,7 @@ export function Sidebar() {
 
   const enlacesDocente = [
     { href: '/dashboard', etiqueta: 'Dashboard', Icono: LayoutDashboard },
+    { href: '/dashboard/disponibilidad', etiqueta: 'Mi Disponibilidad', Icono: Calendar },
     { href: '/dashboard/horarios/seleccion', etiqueta: 'Elegir Horario', Icono: CheckSquare },
     { href: '/dashboard/horarios/vista-docente', etiqueta: 'Mi Horario', Icono: Eye },
     { href: '/dashboard/notificaciones/preferencias', etiqueta: 'Notificaciones', Icono: BellRing },
@@ -93,4 +95,4 @@ export function Sidebar() {
       </div>
     </aside>
   );
-}
+}

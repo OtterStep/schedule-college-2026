@@ -158,7 +158,7 @@ async function main() {
   });
 
   // ─── Usuario administrador ───────────────
-  const hash = await bcrypt.hash('Admin123!', 12);
+  const hashAdmin = await bcrypt.hash('Admin123!', 12);
 
   await prisma.usuario.upsert({
     where: {
@@ -167,8 +167,24 @@ async function main() {
     update: {},
     create: {
       email: 'admin@unt.edu.pe',
-      hash_contrasena: hash,
+      hash_contrasena: hashAdmin,
       rol: 'ADMINISTRADOR',
+    },
+  });
+
+  // ─── Usuario docente (Juan Pérez) ─────────
+  const hashDocente = await bcrypt.hash('Docente123!', 12);
+
+  await prisma.usuario.upsert({
+    where: {
+      email: 'jperez@unt.edu.pe',
+    },
+    update: {},
+    create: {
+      email: 'jperez@unt.edu.pe',
+      hash_contrasena: hashDocente,
+      rol: 'DOCENTE',
+      id_docente: docente1.id,
     },
   });
 

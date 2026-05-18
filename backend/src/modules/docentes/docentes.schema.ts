@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const baseCrearDocenteSchema = z.object({
+const baseDocenteSchema = z.object({
   nombres: z.string().min(1).max(100),
   apellidos: z.string().min(1).max(100),
   email: z.string().email(),
@@ -9,17 +9,20 @@ const baseCrearDocenteSchema = z.object({
   categoria: z.enum(['PRINCIPAL', 'ASOCIADO', 'AUXILIAR', 'JEFE_PRACTICA']),
   antiguedad: z.number().int().min(0).default(0),
   crear_usuario: z.boolean().default(false),
-  password: z.string().min(6).optional(),
+  password: z.string().optional(),
 });
 
-export const crearDocenteSchema = baseCrearDocenteSchema.refine((data) => {
-  if (data.crear_usuario) {
-    return !!data.password;
+export const crearDocenteSchema = baseDocenteSchema.superRefine((data, ctx) => {
+  if (data.crear_usuario && data.password && data.password.length < 6) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.too_small,
+      minimum: 6,
+      type: 'string',
+      inclusive: true,
+      message: 'String must contain at least 6 character(s)',
+      path: ['password']
+    });
   }
-  return true;
-}, {
-  message: "Password es requerido cuando crear_usuario es true",
-  path: ["password"]
 });
 
-export const actualizarDocenteSchema = baseCrearDocenteSchema.partial();
+export const actualizarDocenteSchema = baseDocenteSchema.partial();
