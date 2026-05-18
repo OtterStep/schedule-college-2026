@@ -32,13 +32,15 @@ export function CalendarioGeneral({ idPeriodo, filtroTipo, filtroId, ambienteAsi
   // Obtener horarios asignados
   const { data: horarios, isLoading } = useQuery({
     queryKey: ['horarios-general', idPeriodo, filtroTipo, filtroId],
-    queryFn: async () => {
+      queryFn: async () => {
       const params: any = { idPeriodo };
       if (filtroId) {
         if (filtroTipo === 'AULA') params.idAmbiente = filtroId;
         if (filtroTipo === 'DOCENTE') params.idDocente = filtroId;
       }
       return horariosService.listarHorarios(params).then(res => res.data);
+    }
+>>>>>>> Stashed changes
     },
     enabled: !!idPeriodo,
   });

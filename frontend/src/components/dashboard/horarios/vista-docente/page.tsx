@@ -1,12 +1,81 @@
-'use client';
+"use client";
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { docentesService } from '@/services/docentes.service';
-import { horariosService } from '@/services/horarios.service';
 import { periodosService } from '@/services/periodos.service';
-import { Selector } from '@/components/ui/Selector';
 import { CalendarioGeneral } from '@/components/horarios/CalendarioGeneral';
 import { SpinnerCarga } from '@/components/ui/SpinnerCarga';
+import { Boton } from '@/components/ui/Boton';
+import { NotificacionToast } from '@/components/ui/NotificacionToast';
+import { Selector } from '@/components/ui/Selector';
+import { docentesService } from '@/services/docentes.service';
+import { useAuthStore } from '@/stores/auth.store';
+
+const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'] as const;
+const HORAS = Array.from({ length: 14 }, (_, index) => `${String(index + 7).padStart(2, '0')}:00`);
+
+export default function VistaHorarioDocentePage() {
+  const { usuario } = useAuthStore();
+  const docenteIdFromSession = usuario?.idDocente || null;
+  const [docenteSeleccionado, setDocenteSeleccionado] = useState<number | null>(docenteIdFromSession);
+  const [disponibilidad, setDisponibilidad] = useState<Record<string, boolean>>({});
+  const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState<{ mensaje: string; tipo: 'exito' | 'error' } | null>(null);
+
+  const { data: periodoActivo, isLoading } = useQuery({
+    queryKey: ['periodo-activo'],
+    queryFn: () => periodosService.activo().then((res) => res.data),
+  });
+
+  const { data: docentes } = useQuery({
+    queryKey: ['docentes'],
+    queryFn: () => docentesService.listar().then((res) => res.data),
+  });
+
+  useEffect(() => {
+    // initialize disponibilidad map
+    const siguiente: Record<string, boolean> = {};
+    for (const dia of DIAS) {
+      for (const hora of HORAS) {
+        siguiente[`${dia}|${hora}`] = false;
+      }
+    }
+    setDisponibilidad(siguiente);
+  }, []);
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Horario por Docente</h1>
+      {mensaje && <NotificacionToast mensaje={mensaje.mensaje} tipo={mensaje.tipo} />}
+      <div className="mb-4">
+        <Selector
+          label="Seleccionar Docente"
+          opciones={[
+            { valor: '', etiqueta: 'Seleccionar...' },
+            ...(docentes?.map((d: any) => ({ valor: String(d.id), etiqueta: `${d.nombres} ${d.apellidos}` })) || []),
+          ]}
+          value={docenteSeleccionado?.toString() || ''}
+          onChange={(e) => setDocenteSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
+        />
+      </div>
+      {isLoading ? (
+        <SpinnerCarga />
+      ) : docenteSeleccionado && periodoActivo ? (
+        <div className="space-y-6">
+          <CalendarioGeneral idPeriodo={periodoActivo.id} filtroTipo="DOCENTE" filtroId={docenteSeleccionado} modo="LECTURA" />
+        </div>
+      ) : (
+        <p className="text-gray-500 text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
+          No se pudo identificar el docente de la sesión.
+        </p>
+      )}
+    </div>
+  );
+}
+import { useQuery } from '@tanstack/react-query';
+import { periodosService } from '@/services/periodos.service';
+import { CalendarioGeneral } from '@/components/horarios/CalendarioGeneral';
+import { SpinnerCarga } from '@/components/ui/SpinnerCarga';
+<<<<<<< Updated upstream
 import { Boton } from '@/components/ui/Boton';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
 
@@ -18,12 +87,20 @@ export default function VistaHorarioDocentePage() {
   const [disponibilidad, setDisponibilidad] = useState<Record<string, boolean>>({});
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState<{ mensaje: string; tipo: 'exito' | 'error' } | null>(null);
+=======
+import { useAuthStore } from '@/stores/auth.store';
 
-  const { data: periodoActivo } = useQuery({
+export default function VistaHorarioDocentePage() {
+  const { usuario } = useAuthStore();
+  const docenteId = usuario?.idDocente || null;
+>>>>>>> Stashed changes
+
+  const { data: periodoActivo, isLoading } = useQuery({
     queryKey: ['periodo-activo'],
     queryFn: () => periodosService.activo().then((res) => res.data),
   });
 
+<<<<<<< Updated upstream
   const { data: docentes } = useQuery({
     queryKey: ['docentes'],
     queryFn: () => docentesService.listar().then((res) => res.data),
@@ -159,9 +236,19 @@ export default function VistaHorarioDocentePage() {
           </div>
         </div>
       ) : (
+=======
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Horario por Docente</h1>
+      {!docenteId ? (
+>>>>>>> Stashed changes
         <p className="text-gray-500 text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
-          Seleccione un docente para ver su horario.
+          No se pudo identificar el docente de la sesión.
         </p>
+      ) : isLoading ? (
+        <SpinnerCarga />
+      ) : (
+        <CalendarioGeneral idPeriodo={periodoActivo.id} filtroTipo="DOCENTE" filtroId={docenteId} modo="LECTURA" />
       )}
     </div>
   );

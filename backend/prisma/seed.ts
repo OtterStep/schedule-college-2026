@@ -607,6 +607,22 @@ async function main() {
     },
   });
 
+  // ─── Usuario profesor ───────────────────
+  const hashProfesor = await bcrypt.hash('Profesor123!', 12);
+
+  await prisma.usuario.upsert({
+    where: {
+      email: docente1.email,
+    },
+    update: {},
+    create: {
+      email: docente1.email,
+      hash_contrasena: hashProfesor,
+      rol: 'PROFESOR',
+      id_docente: docente1.id,
+    },
+  });
+
   console.log('✅ Semilla completada.');
 }
 

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { periodosService } from '@/services/periodos.service';
 import { ambientesService } from '@/services/ambientes.service';
@@ -39,11 +39,20 @@ export default function HorariosDashboardPage() {
   });
 
   // Seleccionar automáticamente el primer periodo activo si no hay uno seleccionado
-  if (!idPeriodo && periodos?.length > 0) {
-    const activo = periodos.find((p: any) => p.estado === 'ACTIVO');
-    if (activo) setIdPeriodo(activo.id);
-    else setIdPeriodo(periodos[0].id);
-  }
+  useEffect(() => {
+    if (!idPeriodo && periodos?.length > 0) {
+      const activo = periodos.find((p: any) => p.estado === 'ACTIVO');
+      if (activo) setIdPeriodo(activo.id);
+      else setIdPeriodo(periodos[0].id);
+    }
+  }, [idPeriodo, periodos]);
+
+  useEffect(() => {
+    if (usuario?.rol === 'PROFESOR' && usuario.idDocente) {
+      setFiltroTipo('DOCENTE');
+      setFiltroId(usuario.idDocente);
+    }
+  }, [usuario]);
 
   const publicarHorario = async () => {
     if (!idPeriodo) return;
@@ -113,60 +122,105 @@ export default function HorariosDashboardPage() {
             onChange={(e) => setIdPeriodo(parseInt(e.target.value))}
           />
         </div>
-        <div className="flex-1">
-          <Selector
-            label="Tipo de Vista"
-            opciones={[
-              { valor: 'AULA', etiqueta: 'Vista por Aula / Laboratorio' },
-              { valor: 'DOCENTE', etiqueta: 'Vista por Docente' },
-            ]}
-            value={filtroTipo}
-            onChange={(e) => {
-              const tipo = e.target.value as 'AULA' | 'DOCENTE';
-              setFiltroTipo(tipo);
-              setFiltroId(null);
-              setIdAmbienteAsignacion(null);
-            }}
-          />
-        </div>
-        <div className="flex-1">
-          {filtroTipo === 'AULA' ? (
-            <Selector
-              label="Seleccionar Ambiente"
-              opciones={[
-                { valor: '', etiqueta: 'Todos los ambientes' },
-                ...(ambientes?.map((a: any) => ({ valor: String(a.id), etiqueta: `${a.codigo} - ${a.tipo}` })) || []),
-              ]}
-              value={filtroId?.toString() || ''}
-              onChange={(e) => {
-                const valor = e.target.value ? parseInt(e.target.value) : null;
-                setFiltroId(valor);
-                setIdAmbienteAsignacion(valor);
-              }}
-            />
-          ) : (
-            <Selector
-              label="Seleccionar Docente"
-              opciones={[
-                { valor: '', etiqueta: 'Buscar docente...' },
-                ...(docentes?.map((d: any) => ({ valor: String(d.id), etiqueta: `${d.nombres} ${d.apellidos}` })) || []),
-              ]}
-              value={filtroId?.toString() || ''}
-              onChange={(e) => setFiltroId(e.target.value ? parseInt(e.target.value) : null)}
-            />
-          )}
-        </div>
-        <div className="flex-1">
-          <Selector
-            label="Salón para asignación"
-            opciones={[
-              { valor: '', etiqueta: 'Selecciona un salón' },
-              ...(ambientes?.map((a: any) => ({ valor: String(a.id), etiqueta: `${a.codigo} - ${a.tipo}` })) || []),
-            ]}
-            value={idAmbienteAsignacion?.toString() || ''}
-            onChange={(e) => setIdAmbienteAsignacion(e.target.value ? parseInt(e.target.value) : null)}
-          />
-        </div>
+<<<<<<< Updated upstream
+        {usuario?.rol !== 'PROFESOR' && (
+          <>
+            <div className="flex-1">
+              <Selector
+                label="Tipo de Vista"
+                opciones={[
+                  { valor: 'AULA', etiqueta: 'Vista por Aula / Laboratorio' },
+                  { valor: 'DOCENTE', etiqueta: 'Vista por Docente' },
+                ]}
+                value={filtroTipo}
+                onChange={(e) => {
+                  const tipo = e.target.value as 'AULA' | 'DOCENTE';
+                  setFiltroTipo(tipo);
+                  setFiltroId(null);
+                  setIdAmbienteAsignacion(null);
+                }}
+              />
+            </div>
+            <div className="flex-1">
+              {filtroTipo === 'AULA' ? (
+                <Selector
+                  label="Seleccionar Ambiente"
+                  opciones={[
+                    { valor: '', etiqueta: 'Todos los ambientes' },
+                    ...(ambientes?.map((a: any) => ({ valor: String(a.id), etiqueta: `${a.codigo} - ${a.tipo}` })) || []),
+                  ]}
+                  value={filtroId?.toString() || ''}
+                  onChange={(e) => {
+                    const valor = e.target.value ? parseInt(e.target.value) : null;
+                    setFiltroId(valor);
+                    setIdAmbienteAsignacion(valor);
+                  }}
+                />
+              ) : (
+                <Selector
+                  label="Seleccionar Docente"
+                  opciones={[
+                    { valor: '', etiqueta: 'Buscar docente...' },
+                    ...(docentes?.map((d: any) => ({ valor: String(d.id), etiqueta: `${d.nombres} ${d.apellidos}` })) || []),
+                  ]}
+                  value={filtroId?.toString() || ''}
+                  onChange={(e) => setFiltroId(e.target.value ? parseInt(e.target.value) : null)}
+                />
+              )}
+            </div>
+            <div className="flex-1">
+              <Selector
+                label="Salón para asignación"
+                opciones={[
+                  { valor: '', etiqueta: 'Selecciona un salón' },
+                  ...(ambientes?.map((a: any) => ({ valor: String(a.id), etiqueta: `${a.codigo} - ${a.tipo}` })) || []),
+                ]}
+                value={idAmbienteAsignacion?.toString() || ''}
+                onChange={(e) => setIdAmbienteAsignacion(e.target.value ? parseInt(e.target.value) : null)}
+              />
+            </div>
+          </>
+        )}
+=======
+        {usuario?.rol !== 'PROFESOR' && (
+          <>
+            <div className="flex-1">
+              <Selector
+                label="Tipo de Vista"
+                opciones={[
+                  { valor: 'AULA', etiqueta: 'Vista por Aula / Laboratorio' },
+                  { valor: 'DOCENTE', etiqueta: 'Vista por Docente' },
+                ]}
+                value={filtroTipo}
+                onChange={(e) => setFiltroTipo(e.target.value as 'AULA' | 'DOCENTE')}
+              />
+            </div>
+            <div className="flex-1">
+              {filtroTipo === 'AULA' ? (
+                <Selector
+                  label="Seleccionar Ambiente"
+                  opciones={[
+                    { valor: '', etiqueta: 'Todos los ambientes' },
+                    ...(ambientes?.map((a: any) => ({ valor: String(a.id), etiqueta: `${a.codigo} - ${a.tipo}` })) || []),
+                  ]}
+                  value={filtroId?.toString() || ''}
+                  onChange={(e) => setFiltroId(e.target.value ? parseInt(e.target.value) : null)}
+                />
+              ) : (
+                <Selector
+                  label="Seleccionar Docente"
+                  opciones={[
+                    { valor: '', etiqueta: 'Buscar docente...' },
+                    // Aquí irían los docentes mapeados
+                  ]}
+                  value={filtroId?.toString() || ''}
+                  onChange={(e) => setFiltroId(e.target.value ? parseInt(e.target.value) : null)}
+                />
+              )}
+            </div>
+          </>
+        )}
+>>>>>>> Stashed changes
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
