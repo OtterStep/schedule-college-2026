@@ -18,5 +18,8 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/tsconfig.json ./tsconfig.json
+COPY --from=build /app/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
 EXPOSE 4000
-CMD ["node", "-r", "module-alias/register", "dist/index.js"]    
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["node", "-r", "module-alias/register", "dist/index.js"]
