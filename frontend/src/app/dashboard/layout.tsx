@@ -25,7 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (estaAutenticado && usuario) {
       const rutasAdmin = ['/admin', '/ambientes', '/configuracion', '/cursos', '/docentes', '/periodos', '/reportes'];
       const esRutaAdmin = rutasAdmin.some((ruta) => pathname.startsWith(`/dashboard${ruta}`));
-      const esRutaDocente = pathname.startsWith('/dashboard/docente');
+      const esRutaDocente = pathname === '/dashboard/docente' || pathname.startsWith('/dashboard/docente/');
 
       if (usuario.rol !== 'ADMINISTRADOR' && (esRutaAdmin || pathname === '/dashboard')) {
         router.replace('/dashboard/docente');
