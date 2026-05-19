@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Plus, Calendar, Info, Clock } from 'lucide-react';
+import { cn } from '@/lib/utilidades';
 import { periodosService } from '@/services/periodos.service';
 import { TablaDatos } from '@/components/ui/TablaDatos';
 import { Card, CardContent } from '@/components/ui/Card';
