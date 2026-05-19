@@ -6,6 +6,9 @@ const router: ExpressRouter = Router();
 router.use(middlewareAutenticacion);
 
 router.post('/configurar', VentanasController.configurar);
+router.post('/generar-horario', VentanasController.generarHorario);
+router.post('/actualizar-horario', VentanasController.actualizarHorario);
+router.post('/desactivar', VentanasController.desactivar);
 router.get('/', VentanasController.listar);
 router.get('/activa', VentanasController.obtenerActiva);
 router.get('/:id', VentanasController.obtener);

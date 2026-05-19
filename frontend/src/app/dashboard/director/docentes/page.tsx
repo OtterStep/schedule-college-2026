@@ -116,48 +116,160 @@ export default function GestionDocentesPage() {
         ))}
       </div>
 
-      <Modal isOpen={modalAbierto} onClose={() => setModalAbierto(false)} titulo="Registrar Nuevo Docente">
-        <form onSubmit={manejarSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <CampoTexto label="Nombres" required value={formData.nombres} onChange={(e) => setFormData({...formData, nombres: e.target.value})} />
-            <CampoTexto label="Apellidos" required value={formData.apellidos} onChange={(e) => setFormData({...formData, apellidos: e.target.value})} />
-          </div>
-          <CampoTexto label="Email Institucional" type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
+      {modalAbierto && (
+        <Modal cerrar={() => setModalAbierto(false)}>
           
-          <div className="grid grid-cols-2 gap-4">
-            <Selector label="Modalidad" value={formData.modalidad} onChange={(e: any) => setFormData({...formData, modalidad: e.target.value})}>
-              <option value="NOMBRADO">Nombrado</option>
-              <option value="CONTRATADO">Contratado</option>
-            </Selector>
-            <Selector label="Categoría" value={formData.categoria} onChange={(e: any) => setFormData({...formData, categoria: e.target.value})}>
-              <option value="PRINCIPAL">Principal</option>
-              <option value="ASOCIADO">Asociado</option>
-              <option value="AUXILIAR">Auxiliar</option>
-              <option value="JEFE_PRACTICA">Jefe de Práctica</option>
-            </Selector>
-          </div>
+          <h2 className="text-xl font-semibold mb-4">
+            Registrar Nuevo Docente
+          </h2>
 
-          <div className="grid grid-cols-2 gap-4">
-            <CampoTexto label="Límite Horas/Semana" type="number" value={formData.horas_max_semana} onChange={(e) => setFormData({...formData, horas_max_semana: Number(e.target.value)})} />
-            <CampoTexto label="Antigüedad (Años)" type="number" value={formData.antiguedad} onChange={(e) => setFormData({...formData, antiguedad: Number(e.target.value)})} />
-          </div>
+          <form onSubmit={manejarSubmit} className="space-y-4">
 
-          <div className="flex items-center gap-2 py-2">
-            <input type="checkbox" checked={formData.crear_usuario} onChange={(e) => setFormData({...formData, crear_usuario: e.target.checked})} />
-            <span className="text-sm text-gray-600">Crear cuenta de acceso automáticamente</span>
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <CampoTexto
+                label="Nombres"
+                required
+                value={formData.nombres}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    nombres: e.target.value
+                  })
+                }
+              />
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Boton variant="outline" type="button" onClick={() => setModalAbierto(false)}>Cancelar</Boton>
-            <Boton type="submit" disabled={mutationCrear.isPending}>
-              {mutationCrear.isPending ? 'Guardando...' : 'Registrar Docente'}
-            </Boton>
-          </div>
-        </form>
-      </Modal>
+              <CampoTexto
+                label="Apellidos"
+                required
+                value={formData.apellidos}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    apellidos: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            <CampoTexto
+              label="Email Institucional"
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  email: e.target.value
+                })
+              }
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+
+              <Selector
+                label="Modalidad"
+                value={formData.modalidad}
+                onChange={(e: any) =>
+                  setFormData({
+                    ...formData,
+                    modalidad: e.target.value
+                  })
+                }
+              >
+                <option value="NOMBRADO">Nombrado</option>
+                <option value="CONTRATADO">Contratado</option>
+              </Selector>
+
+              <Selector
+                label="Categoría"
+                value={formData.categoria}
+                onChange={(e: any) =>
+                  setFormData({
+                    ...formData,
+                    categoria: e.target.value
+                  })
+                }
+              >
+                <option value="PRINCIPAL">Principal</option>
+                <option value="ASOCIADO">Asociado</option>
+                <option value="AUXILIAR">Auxiliar</option>
+                <option value="JEFE_PRACTICA">Jefe de Práctica</option>
+              </Selector>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+
+              <CampoTexto
+                label="Límite Horas/Semana"
+                type="number"
+                value={formData.horas_max_semana}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    horas_max_semana: Number(e.target.value)
+                  })
+                }
+              />
+
+              <CampoTexto
+                label="Antigüedad (Años)"
+                type="number"
+                value={formData.antiguedad}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    antiguedad: Number(e.target.value)
+                  })
+                }
+              />
+            </div>
+
+            <div className="flex items-center gap-2 py-2">
+              <input
+                type="checkbox"
+                checked={formData.crear_usuario}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    crear_usuario: e.target.checked
+                  })
+                }
+              />
+
+              <span className="text-sm text-gray-600">
+                Crear cuenta de acceso automáticamente
+              </span>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+
+              <Boton
+                variante="borde"
+                type="button"
+                onClick={() => setModalAbierto(false)}
+              >
+                Cancelar
+              </Boton>
+
+              <Boton
+                onClick={() => setModalAbierto(true)}
+                variante="borde"
+                className="px-3 py-1.5 text-sm"
+              >
+                Agregar Componente
+              </Boton>
+
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {mensaje && (
-        <NotificacionToast mensaje={mensaje.texto} tipo={mensaje.tipo} onClose={() => setMensaje(null)} />
+        <NotificacionToast
+          mensaje={mensaje.texto}
+          tipo={mensaje.tipo === 'success' ? 'exito' : mensaje.tipo}
+          onClose={() => setMensaje(null)}
+        />
       )}
     </div>
   );

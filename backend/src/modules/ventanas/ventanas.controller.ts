@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { VentanasService } from './ventanas.service';
-import { configurarVentanasSchema } from './ventanas.schema';
+import { configurarVentanasSchema, generarHorarioVentanasSchema, desactivarVentanasSchema } from './ventanas.schema';
 
 export class VentanasController {
   static async configurar(req: Request, res: Response) {
@@ -21,6 +21,61 @@ export class VentanasController {
     const idPeriodo = req.query.periodo ? parseInt(req.query.periodo as string) : undefined;
     const ventanas = await VentanasService.listar(idPeriodo);
     res.json(ventanas);
+  }
+
+  static async generarHorario(req: Request, res: Response) {
+    try {
+      const datos = generarHorarioVentanasSchema.parse(req.body);
+      const resultado = await VentanasService.generarHorarioAtencion(
+        datos.idPeriodo,
+        datos.fechaInicio,
+        datos.fechaFin,
+        datos.horaInicio,
+        datos.horaFin
+      );
+      res.status(201).json(resultado);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+      } else {
+        res.status(400).json({ error: error.message });
+      }
+    }
+  }
+
+  static async actualizarHorario(req: Request, res: Response) {
+    try {
+      const datos = generarHorarioVentanasSchema.parse(req.body);
+      const resultado = await VentanasService.generarHorarioAtencion(
+        datos.idPeriodo,
+        datos.fechaInicio,
+        datos.fechaFin,
+        datos.horaInicio,
+        datos.horaFin,
+        true
+      );
+      res.status(200).json(resultado);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+      } else {
+        res.status(400).json({ error: error.message });
+      }
+    }
+  }
+
+  static async desactivar(req: Request, res: Response) {
+    try {
+      const datos = desactivarVentanasSchema.parse(req.body);
+      const resultado = await VentanasService.desactivarVentanas(datos.idPeriodo);
+      res.json(resultado);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+      } else {
+        res.status(400).json({ error: error.message });
+      }
+    }
   }
 
   static async obtenerActiva(req: Request, res: Response) {

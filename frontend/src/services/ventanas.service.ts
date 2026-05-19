@@ -2,6 +2,11 @@ import { apiClient } from '@/lib/api-client';
 
 export const ventanasService = {
   configurar: (datos: any) => apiClient.post('/ventanas/configurar', datos),
+  generarHorario: (datos: { idPeriodo: number; fechaInicio: string; fechaFin: string; horaInicio: string; horaFin: string }) =>
+    apiClient.post('/ventanas/generar-horario', datos),
+  actualizarHorario: (datos: { idPeriodo: number; fechaInicio: string; fechaFin: string; horaInicio: string; horaFin: string }) =>
+    apiClient.post('/ventanas/actualizar-horario', datos),
+  desactivar: (idPeriodo: number) => apiClient.post('/ventanas/desactivar', { idPeriodo }),
   listar: (periodo?: number) => apiClient.get('/ventanas', { params: { periodo } }),
   obtenerActiva: (periodo?: number) => apiClient.get('/ventanas/activa', { params: { periodo } }),
   obtener: (id: number) => apiClient.get(`/ventanas/${id}`),

@@ -58,9 +58,14 @@ export function Sidebar() {
 
   const enlacesSecretaria = [
     { href: '/dashboard/admin', etiqueta: 'Panel Secretaría', Icono: LayoutDashboard },
-    { href: '/dashboard/ambientes', etiqueta: 'Gestión de Aulas', Icono: School },
-    { href: '/dashboard/director/solicitudes-aula', etiqueta: 'Asignar Aulas', Icono: MapPin },
-    { href: '/dashboard/horarios/vista-aula', etiqueta: 'Horario por Aulas', Icono: Eye },
+    { href: '/dashboard/secretaria/ambientes', etiqueta: 'Ambientes', Icono: School },
+    { href: '/dashboard/secretaria/docentes', etiqueta: 'Docentes', Icono: Users },
+    { href: '/dashboard/secretaria/cursos-asignados', etiqueta: 'Cursos asignados', Icono: BookOpen },
+    { href: '/dashboard/secretaria/grupos', etiqueta: 'Grupos', Icono: Eye },
+    { href: '/dashboard/secretaria/ventanas', etiqueta: 'Ventanas de Atención', Icono: Clock },
+    { href: '/dashboard/secretaria/registro-horarios', etiqueta: 'Registro Manual', Icono: CheckSquare },
+    { href: '/dashboard/secretaria/horarios-finales', etiqueta: 'Horarios Finales', Icono: Send },
+    { href: '/dashboard/horarios/vista-aula', etiqueta: 'Horario por Aulas', Icono: MapPin },
   ];
 
   const enlacesDocente = [

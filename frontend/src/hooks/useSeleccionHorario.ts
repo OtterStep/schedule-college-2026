@@ -8,6 +8,7 @@ export function useSeleccionHorario(docenteId: number) {
   const seleccionesQuery = useQuery({
     queryKey: ['selecciones-temporales', docenteId],
     queryFn: () => horariosService.obtenerSeleccionesTemporales(docenteId).then((res) => res.data),
+    enabled: !!docenteId,
   });
 
   const seleccionarMutation = useMutation({

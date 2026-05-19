@@ -335,6 +335,16 @@ async function main() {
   });
   console.log('Administrador configurado correctamente.');
 
+  // --- SECRETARIA ---
+  console.log('Configurando Secretaria...');
+  const hashSecretaria = await bcrypt.hash('Secretaria123!', 12);
+  await prisma.usuario.upsert({
+    where: { email: 'secretaria@unt.edu.pe' },
+    update: { hash_contrasena: hashSecretaria, rol: 'SECRETARIA', activo: true },
+    create: { email: 'secretaria@unt.edu.pe', hash_contrasena: hashSecretaria, rol: 'SECRETARIA', activo: true },
+  });
+  console.log('Secretaria configurada correctamente.');
+
   // --- DOCENTES ---
   console.log('Configurando Docentes...');
   const hashDocente = await bcrypt.hash('Docente123!', 12);

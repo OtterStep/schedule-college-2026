@@ -21,7 +21,11 @@ export default function OfertaAcademicaPage() {
   const [componentes, setComponentes] = useState<any[]>([
     { tipo: 'TEORIA', horas_requeridas: 4, n_grupos: 1 }
   ]);
-  const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'success' | 'error' } | null>(null);
+  
+  const [mensaje, setMensaje] = useState<{
+    texto: string;
+    tipo: 'exito' | 'error' | 'advertencia';
+  } | null>(null);
 
   const { data: periodos } = useQuery({
     queryKey: ['periodos'],
@@ -42,7 +46,7 @@ export default function OfertaAcademicaPage() {
   const mutation = useMutation({
     mutationFn: (datos: any) => cargaHorariaService.configurarOferta(datos),
     onSuccess: () => {
-      setMensaje({ texto: 'Oferta académica configurada correctamente', tipo: 'success' });
+      setMensaje({ texto: 'Oferta académica configurada correctamente', tipo: 'exito' });
       queryClient.invalidateQueries({ queryKey: ['curso', idCurso] });
     },
     onError: (error: any) => {
@@ -141,8 +145,13 @@ export default function OfertaAcademicaPage() {
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Componentes y Grupos</CardTitle>
-            <Boton onClick={agregarComponente} variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-2" /> Agregar Componente
+            <Boton
+              onClick={agregarComponente}
+              variante="borde"
+              className="px-3 py-1.5 text-sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Agregar Componente
             </Boton>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -176,7 +185,6 @@ export default function OfertaAcademicaPage() {
                     value={comp.n_grupos}
                     onChange={(e: any) => actualizarComponente(index, 'n_grupos', Number(e.target.value))}
                     disabled={comp.tipo === 'TEORIA'} // Teoría suele ser único
-                    ayuda={comp.tipo === 'LABORATORIO' ? "Basado en aforo y matrículas previas" : ""}
                   />
                 </div>
               </div>

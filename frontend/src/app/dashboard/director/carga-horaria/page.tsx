@@ -149,7 +149,7 @@ export default function CargaHorariaPage() {
                           )}
                         </div>
                       </div>
-                      <Boton size="sm" variant="outline" onClick={() => abrirModalAsignacion(comp)}>
+                      <Boton onClick={() => abrirModalAsignacion(comp)}>
                         <Plus className="h-4 w-4 mr-1" /> Asignar
                       </Boton>
                     </div>
@@ -192,40 +192,69 @@ export default function CargaHorariaPage() {
         </div>
       </div>
 
-      <Modal isOpen={modalAsignacion} onClose={() => setModalAsignacion(false)} titulo="Asignar Docente">
-        <div className="space-y-4">
-          <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
-            Asignando docente para: <strong>{componenteSeleccionado?.tipo}</strong>
+      {modalAsignacion && (
+        <Modal cerrar={() => setModalAsignacion(false)}>
+          <div className="space-y-4">
+            
+            <h2 className="text-lg font-semibold">
+              Asignar Docente
+            </h2>
+
+            <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
+              Asignando docente para:
+              <strong> {componenteSeleccionado?.tipo}</strong>
+            </div>
+
+            <Selector
+              label="Docente"
+              value={idDocente}
+              onChange={(e: any) => setIdDocente(Number(e.target.value))}
+            >
+              <option value={0}>Seleccione un docente</option>
+
+              {docentes?.map((d: any) => (
+                <option key={d.id} value={d.id}>
+                  {d.apellidos}, {d.nombres} ({d.categoria})
+                </option>
+              ))}
+            </Selector>
+
+            <CampoTexto
+              label="Horas a Asignar"
+              type="number"
+              value={horasAsignadas}
+              onChange={(e: any) =>
+                setHorasAsignadas(Number(e.target.value))
+              }
+            />
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Boton
+                variante="borde"
+                onClick={() => setModalAsignacion(false)}
+              >
+                Cancelar
+              </Boton>
+
+              <Boton
+                onClick={manejarAsignar}
+                disabled={mutationAsignar.isPending}
+              >
+                <Save className="h-4 w-4 mr-2" />
+
+                {mutationAsignar.isPending
+                  ? 'Guardando...'
+                  : 'Guardar Asignación'}
+              </Boton>
+            </div>
           </div>
-          <Selector
-            label="Docente"
-            value={idDocente}
-            onChange={(e: any) => setIdDocente(Number(e.target.value))}
-          >
-            <option value={0}>Seleccione un docente</option>
-            {docentes?.map((d: any) => (
-              <option key={d.id} value={d.id}>{d.apellidos}, {d.nombres} ({d.categoria})</option>
-            ))}
-          </Selector>
-          <CampoTexto
-            label="Horas a Asignar"
-            type="number"
-            value={horasAsignadas}
-            onChange={(e: any) => setHorasAsignadas(Number(e.target.value))}
-          />
-          <div className="flex justify-end gap-3 pt-4">
-            <Boton variant="outline" onClick={() => setModalAsignacion(false)}>Cancelar</Boton>
-            <Boton onClick={manejarAsignar} disabled={mutationAsignar.isPending}>
-              <Save className="h-4 w-4 mr-2" /> {mutationAsignar.isPending ? 'Guardando...' : 'Guardar Asignación'}
-            </Boton>
-          </div>
-        </div>
-      </Modal>
+        </Modal>
+      )}
 
       {mensaje && (
         <NotificacionToast
           mensaje={mensaje.texto}
-          tipo={mensaje.tipo}
+          tipo={mensaje.tipo === 'success' ? 'exito' : mensaje.tipo}
           onClose={() => setMensaje(null)}
         />
       )}

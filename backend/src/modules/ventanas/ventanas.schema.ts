@@ -17,3 +17,15 @@ export const configurarVentanasSchema = z.object({
   idPeriodo: z.number().int().positive(),
   dias: z.array(diaSchema).min(1),
 });
+
+export const generarHorarioVentanasSchema = z.object({
+  idPeriodo: z.number().int().positive(),
+  fechaInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  fechaFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  horaInicio: z.string().regex(/^\d{2}:\d{2}$/),
+  horaFin: z.string().regex(/^\d{2}:\d{2}$/),
+});
+
+export const desactivarVentanasSchema = z.object({
+  idPeriodo: z.number().int().positive(),
+});

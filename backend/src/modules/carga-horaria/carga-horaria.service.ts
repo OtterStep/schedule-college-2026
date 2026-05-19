@@ -95,6 +95,8 @@ export class CargaHorariaService {
         id: true,
         nombres: true,
         apellidos: true,
+        modalidad: true,
+        categoria: true,
         horas_max_semana: true,
         asignaciones: {
           where: {
