@@ -19,6 +19,7 @@ import {
   Send,
   BellRing,
   MapPin,
+  FileDown,
 } from 'lucide-react';
 
 export function Sidebar() {

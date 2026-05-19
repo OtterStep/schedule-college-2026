@@ -1,6 +1,8 @@
 import { apiClient } from '@/lib/api-client';
 
 export const ventanasService = {
+  generarAutomatica: (datos: { idPeriodo: number; fechaInicio: string }) =>
+    apiClient.post('/ventanas/generar-automatica', datos),
   configurar: (datos: any) => apiClient.post('/ventanas/configurar', datos),
   generarHorario: (datos: { idPeriodo: number; fechaInicio: string; fechaFin: string; horaInicio: string; horaFin: string }) =>
     apiClient.post('/ventanas/generar-horario', datos),

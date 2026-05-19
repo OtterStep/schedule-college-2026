@@ -12,46 +12,47 @@ import { Boton } from '@/components/ui/Boton';
 import { CampoTexto } from '@/components/ui/CampoTexto';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
 import { Modal } from '@/components/ui/Modal';
-import { Users, BookOpen, AlertCircle, Save, Plus } from 'lucide-react';
+import { Users, BookOpen, AlertCircle, Save, Plus, Clock, GraduationCap, ArrowRight } from 'lucide-react';
 
 export default function CargaHorariaPage() {
   const queryClient = useQueryClient();
   const [idPeriodo, setIdPeriodo] = useState<number>(0);
-  const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ mensaje: string; tipo: 'exito' | 'error' } | null>(null);
   const [modalAsignacion, setModalAsignacion] = useState(false);
   const [componenteSeleccionado, setComponenteSeleccionado] = useState<any>(null);
   const [idDocente, setIdDocente] = useState<number>(0);
   const [horasAsignadas, setHorasAsignadas] = useState<number>(0);
 
-  const { data: periodos } = useQuery({
+  const { data: responsePeriodos } = useQuery({
     queryKey: ['periodos'],
     queryFn: () => periodosService.listar().then(res => res.data)
   });
+  const periodos = Array.isArray(responsePeriodos) ? responsePeriodos : responsePeriodos?.data || [];
 
-  const { data: docentes } = useQuery({
+  const { data: responseDocentes } = useQuery({
     queryKey: ['docentes'],
     queryFn: () => docentesService.listar({}).then(res => res.data)
   });
+  const docentes = Array.isArray(responseDocentes) ? responseDocentes : responseDocentes?.data || [];
 
-  const { data: resumenCarga } = useQuery({
+  const { data: responseResumen } = useQuery({
     queryKey: ['resumen-carga', idPeriodo],
     queryFn: () => cargaHorariaService.obtenerResumen(idPeriodo).then(res => res.data),
     enabled: idPeriodo > 0
   });
+  const resumenCarga = Array.isArray(responseResumen) ? responseResumen : responseResumen?.data || [];
 
-  // También necesitamos ver los cursos y sus componentes para asignarles docentes
-  const { data: cursosConOferta } = useQuery({
+  const { data: cursosConOferta, isLoading: loadingOferta } = useQuery({
     queryKey: ['cursos-con-oferta', idPeriodo],
     queryFn: async () => {
-      // Esta es una simplificación, idealmente habría un endpoint que devuelva 
-      // todos los componentes de un periodo.
-      const cursos = await cursosService.listar().then(res => res.data);
+      const res = await cursosService.listar().then(res => res.data);
+      const cursos = Array.isArray(res) ? res : res?.data || [];
       const detalles = await Promise.all(
         cursos.map(async (c: any) => {
-          const det = await cursosService.obtener(c.id).then(res => res.data);
+          const detRes = await cursosService.obtener(c.id).then(res => res.data);
           return {
             ...c,
-            oferta: det.ofertas.find((o: any) => o.id_periodo === idPeriodo)
+            oferta: detRes.ofertas?.find((o: any) => o.id_periodo === idPeriodo)
           };
         })
       );
@@ -63,19 +64,20 @@ export default function CargaHorariaPage() {
   const mutationAsignar = useMutation({
     mutationFn: (datos: any) => cargaHorariaService.asignarCarga(datos),
     onSuccess: () => {
-      setMensaje({ texto: 'Carga horaria asignada correctamente', tipo: 'success' });
+      setToast({ mensaje: 'Carga horaria asignada correctamente', tipo: 'exito' });
       setModalAsignacion(false);
       queryClient.invalidateQueries({ queryKey: ['resumen-carga', idPeriodo] });
       queryClient.invalidateQueries({ queryKey: ['cursos-con-oferta', idPeriodo] });
     },
     onError: (error: any) => {
-      setMensaje({ texto: error.response?.data?.error || 'Error al asignar carga', tipo: 'error' });
+      setToast({ mensaje: error.response?.data?.error || 'Error al asignar carga', tipo: 'error' });
     }
   });
 
   const abrirModalAsignacion = (comp: any) => {
     setComponenteSeleccionado(comp);
     setHorasAsignadas(comp.horas_requeridas);
+    setIdDocente(0);
     setModalAsignacion(true);
   };
 
@@ -89,20 +91,20 @@ export default function CargaHorariaPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Carga Horaria</h1>
-          <p className="text-gray-500 text-sm">Asigna docentes a los componentes de cada curso.</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Carga Horaria</h1>
+          <p className="text-slate-500 mt-1">Asigna docentes a los componentes de cada curso para el período lectivo.</p>
         </div>
-        <div className="w-64">
+        <div className="w-full sm:w-72">
           <Selector
-            label="Período"
+            label="Seleccionar Período Lectivo"
             value={idPeriodo}
             onChange={(e: any) => setIdPeriodo(Number(e.target.value))}
           >
-            <option value={0}>Seleccione periodo</option>
-            {periodos?.map((p: any) => (
+            <option value={0}>-- Elegir período --</option>
+            {periodos.map((p: any) => (
               <option key={p.id} value={p.id}>{p.nombre}</option>
             ))}
           </Selector>
@@ -160,37 +162,49 @@ export default function CargaHorariaPage() {
           ))}
         </div>
 
-        {/* Resumen de Carga Docente */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Users className="h-5 w-5 text-unt-primary" /> Estado de Docentes
-          </h2>
-          {!idPeriodo && <p className="text-center py-10 bg-gray-50 rounded-xl border-2 border-dashed">Resumen de carga docente</p>}
-          {resumenCarga?.map((docente: any) => {
-            const horasAsignadasTotal = docente.asignaciones.reduce((acc: number, a: any) => acc + a.horas_asignadas, 0);
-            const limite = docente.horas_max_semana || 40;
-            const porcentaje = Math.min(100, (horasAsignadasTotal / limite) * 100);
-            const colorBarra = porcentaje > 90 ? 'bg-red-500' : porcentaje > 70 ? 'bg-yellow-500' : 'bg-green-500';
+          {/* Resumen de Carga Docente */}
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Users className="w-5 h-5 text-unt-primary" /> Carga Docente
+            </h2>
+            
+            <div className="grid gap-4">
+              {resumenCarga?.map((docente: any) => {
+                const horasAsignadasTotal = docente.asignaciones.reduce((acc: number, a: any) => acc + a.horas_asignadas, 0);
+                const limite = docente.horas_max_semana || 40;
+                const porcentaje = Math.min(100, (horasAsignadasTotal / limite) * 100);
+                const colorBarra = porcentaje > 95 ? 'bg-red-500' : porcentaje > 80 ? 'bg-amber-500' : 'bg-emerald-500';
 
-            return (
-              <Card key={docente.id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold text-sm">{docente.apellidos}, {docente.nombres}</p>
-                      <p className="text-xs text-gray-500">{docente.modalidad} - {docente.categoria}</p>
-                    </div>
-                    <p className="text-xs font-bold">{horasAsignadasTotal} / {limite}h</p>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div className={`${colorBarra} h-1.5 rounded-full transition-all`} style={{ width: `${porcentaje}%` }}></div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                return (
+                  <Card key={docente.id} className="border-none shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex flex-col">
+                          <p className="font-bold text-sm text-slate-900 leading-tight">{docente.apellidos}, {docente.nombres}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <GraduationCap className="w-3 h-3 text-slate-400" />
+                            <span className="text-[10px] text-slate-500 font-bold uppercase">{docente.categoria}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-xs font-extrabold ${porcentaje > 95 ? 'text-red-600' : 'text-slate-700'}`}>
+                            {horasAsignadasTotal} / {limite}h
+                          </span>
+                        </div>
+                      </div>
+                      <div className="relative w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className={`${colorBarra} h-full rounded-full transition-all duration-1000 ease-out`} 
+                          style={{ width: `${porcentaje}%` }} 
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </div>
 
       {modalAsignacion && (
         <Modal cerrar={() => setModalAsignacion(false)}>
@@ -251,11 +265,11 @@ export default function CargaHorariaPage() {
         </Modal>
       )}
 
-      {mensaje && (
+      {toast && (
         <NotificacionToast
-          mensaje={mensaje.texto}
-          tipo={mensaje.tipo === 'success' ? 'exito' : mensaje.tipo}
-          onClose={() => setMensaje(null)}
+          mensaje={toast.mensaje}
+          tipo={toast.tipo}
+          onClose={() => setToast(null)}
         />
       )}
     </div>
