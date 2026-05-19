@@ -17,6 +17,7 @@ import rutasReportes from './modules/reportes/reportes.routes';
 import rutasNotificaciones from './modules/notificaciones/notificaciones.routes';
 import rutasDisponibilidad from './modules/disponibilidad/disponibilidad.routes';
 import rutasUsuarios from './modules/usuarios/usuarios.routes';
+import rutasCargaHoraria from './modules/carga-horaria/carga-horaria.routes';
 
 const app: Express = express();
 
@@ -40,6 +41,7 @@ app.use('/api/reportes', rutasReportes);
 app.use('/api/notificaciones', rutasNotificaciones);
 app.use('/api/disponibilidad', rutasDisponibilidad);
 app.use('/api/usuarios', rutasUsuarios);
+app.use('/api/carga-horaria', rutasCargaHoraria);
 
 
 // Ruta de salud

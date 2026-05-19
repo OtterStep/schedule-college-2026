@@ -47,7 +47,15 @@ export class ValidadorHorario {
 
     // 2. Validar cruces con horarios confirmados del docente
     for (const sel of seleccionesDocente) {
-      const conflicto = await prisma.horario_asignado.findFirst({
+      const componente = await prisma.curso_componente.findUnique({
+        where: { id: sel.idComponente },
+        include: { oferta: true },
+      });
+      if (!componente) {
+        conflictos.push(`Conflicto: Componente inválido (ID ${sel.idComponente})`);
+        continue;
+      }
+      const conflicto = await prisma.bloque_horario.findFirst({
         where: {
           id_docente: idDocente,
           id_periodo: idPeriodo,
@@ -58,7 +66,7 @@ export class ValidadorHorario {
       });
       if (conflicto) {
         conflictos.push(
-          `Conflicto: Ya tiene clase el ${sel.diaSemana} a las ${sel.horaInicio} (curso ID ${conflicto.id_curso})`
+          `Conflicto: Ya tiene clase el ${sel.diaSemana} a las ${sel.horaInicio} (bloque ID ${conflicto.id})`
         );
       }
     }
@@ -83,8 +91,9 @@ export class ValidadorHorario {
 
     // 5. Validar disponibilidad del ambiente (cruces con otros docentes)
     for (const sel of seleccionesDocente) {
-      const conflictoAmbiente = await prisma.horario_asignado.findFirst({
+      const conflictoAmbiente = await prisma.bloque_horario.findFirst({
         where: {
+          id_periodo: idPeriodo,
           id_ambiente: sel.idAmbiente,
           dia_semana: sel.diaSemana,
           hora_inicio: sel.horaInicio,
@@ -100,26 +109,15 @@ export class ValidadorHorario {
     }
 
     // 6. Validar horas requeridas del curso vs horas seleccionadas
-    const cursosDocente = await prisma.docente_curso.findMany({
+    const asignaciones = await prisma.asignacion_docente_componente.findMany({
       where: { id_docente: idDocente },
-      include: { curso: true },
+      include: { componente: { include: { oferta: { include: { curso: true } } } } },
     });
-    for (const dc of cursosDocente) {
-      const seleccionesTeoria = seleccionesDocente.filter(
-        (s) => s.idCurso === dc.id_curso && s.tipoClase === 'TEORIA'
-      ).length;
-      const seleccionesLab = seleccionesDocente.filter(
-        (s) => s.idCurso === dc.id_curso && s.tipoClase === 'LABORATORIO'
-      ).length;
-
-      if (dc.curso.horas_teoria > 0 && seleccionesTeoria < dc.curso.horas_teoria) {
+    for (const a of asignaciones) {
+      const selecciones = seleccionesDocente.filter((s) => s.idComponente === a.id_componente).length;
+      if (a.horas_asignadas > 0 && selecciones < a.horas_asignadas) {
         advertencias.push(
-          `Faltan ${dc.curso.horas_teoria - seleccionesTeoria}h de teoría para ${dc.curso.nombre}`
-        );
-      }
-      if (dc.curso.horas_laboratorio > 0 && seleccionesLab < dc.curso.horas_laboratorio) {
-        advertencias.push(
-          `Faltan ${dc.curso.horas_laboratorio - seleccionesLab}h de laboratorio para ${dc.curso.nombre}`
+          `Faltan ${a.horas_asignadas - selecciones}h de ${a.componente.tipo} para ${a.componente.oferta.curso.nombre}`
         );
       }
     }

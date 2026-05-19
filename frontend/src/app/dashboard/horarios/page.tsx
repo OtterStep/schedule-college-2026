@@ -49,7 +49,7 @@ export default function HorariosDashboardPage() {
   }, [idPeriodo, periodos]);
 
   useEffect(() => {
-    if (usuario?.rol === 'PROFESOR' && usuario.idDocente) {
+    if (usuario?.rol === 'DOCENTE' && usuario.idDocente) {
       setFiltroTipo('DOCENTE');
       setFiltroId(usuario.idDocente);
     }

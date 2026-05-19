@@ -46,27 +46,27 @@ export class GeneradorPDFService {
     const ambiente = await prisma.ambiente.findUnique({
       where: { id: idAula },
       include: {
-        horarios: {
+        bloques: {
           where: {
             id_periodo: idPeriodo,
             estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
           },
-          include: { curso: true, docente: true },
+          include: { componente: { include: { oferta: { include: { curso: true } } } }, docente: true, grupo: true },
           orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],
         },
       },
     });
     if (!ambiente) throw new Error('Ambiente no encontrado');
 
-    const filas = ambiente.horarios
+    const filas = ambiente.bloques
       .map(
         (h) => `
       <tr>
         <td>${h.dia_semana}</td>
         <td>${h.hora_inicio} - ${h.hora_fin}</td>
-        <td>${h.curso?.nombre || ''}</td>
+        <td>${h.componente?.oferta?.curso?.nombre || ''}</td>
         <td>${h.docente?.nombres} ${h.docente?.apellidos}</td>
-        <td>${h.tipo_clase}</td>
+        <td>${h.componente?.tipo || ''}</td>
       </tr>`
       )
       .join('');
@@ -90,27 +90,27 @@ export class GeneradorPDFService {
     const docente = await prisma.docente.findUnique({
       where: { id: idDocente },
       include: {
-        horarios: {
+        bloques: {
           where: {
             id_periodo: idPeriodo,
             estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
           },
-          include: { curso: true, ambiente: true },
+          include: { componente: { include: { oferta: { include: { curso: true } } } }, ambiente: true, grupo: true },
           orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],
         },
       },
     });
     if (!docente) throw new Error('Docente no encontrado');
 
-    const filas = docente.horarios
+    const filas = docente.bloques
       .map(
         (h) => `
       <tr>
         <td>${h.dia_semana}</td>
         <td>${h.hora_inicio} - ${h.hora_fin}</td>
-        <td>${h.curso?.nombre || ''}</td>
+        <td>${h.componente?.oferta?.curso?.nombre || ''}</td>
         <td>${h.ambiente?.codigo || ''}</td>
-        <td>${h.tipo_clase}</td>
+        <td>${h.componente?.tipo || ''}</td>
       </tr>`
       )
       .join('');
@@ -127,7 +127,7 @@ export class GeneradorPDFService {
 
   private static async reporteGestion(params: any): Promise<string> {
     const { idPeriodo } = params;
-    const resumen = await prisma.horario_asignado.groupBy({
+    const resumen = await prisma.bloque_horario.groupBy({
       by: ['estado'],
       where: { id_periodo: idPeriodo },
       _count: true,

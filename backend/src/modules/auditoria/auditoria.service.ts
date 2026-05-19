@@ -18,6 +18,16 @@ export class AuditoriaService {
       if (params.desde) where.fecha.gte = new Date(params.desde);
       if (params.hasta) where.fecha.lte = new Date(params.hasta);
     }
+    if (params.idPeriodo || params.idDocente) {
+      const bloques = await prisma.bloque_horario.findMany({
+        where: {
+          ...(params.idPeriodo ? { id_periodo: params.idPeriodo } : {}),
+          ...(params.idDocente ? { id_docente: params.idDocente } : {}),
+        },
+        select: { id: true },
+      });
+      where.id_bloque_horario = { in: bloques.map((b) => b.id) };
+    }
 
     const pagina = params.pagina || 1;
     const limite = params.limite || 50;
@@ -43,7 +53,7 @@ export class AuditoriaService {
 
   static async obtenerPorHorario(idHorario: number) {
     return prisma.auditoria_horario.findMany({
-      where: { id_horario: idHorario },
+      where: { id_bloque_horario: idHorario },
       orderBy: { fecha: 'desc' },
     });
   }

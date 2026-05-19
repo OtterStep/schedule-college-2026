@@ -17,22 +17,26 @@ export class PublicadorHorarios {
     return prisma.$transaction(async (tx) => {
       // Verificar conflictos antes de insertar
       for (const sel of selecciones) {
-        const conflicto = await tx.horario_asignado.findFirst({
-          where: {
-            id_ambiente: sel.idAmbiente,
-            dia_semana: sel.diaSemana,
-            hora_inicio: sel.horaInicio,
-            estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
-          },
-        });
-        if (conflicto) {
-          throw new Error(
-            `Conflicto: El ambiente ya está ocupado el ${sel.diaSemana} a las ${sel.horaInicio}`
-          );
+        if (sel.idAmbiente) {
+          const conflicto = await tx.bloque_horario.findFirst({
+            where: {
+              id_periodo: idPeriodo,
+              id_ambiente: sel.idAmbiente,
+              dia_semana: sel.diaSemana,
+              hora_inicio: sel.horaInicio,
+              estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
+            },
+          });
+          if (conflicto) {
+            throw new Error(
+              `Conflicto: El ambiente ya está ocupado el ${sel.diaSemana} a las ${sel.horaInicio}`
+            );
+          }
         }
 
-        const cruceDocente = await tx.horario_asignado.findFirst({
+        const cruceDocente = await tx.bloque_horario.findFirst({
           where: {
+            id_periodo: idPeriodo,
             id_docente: idDocente,
             dia_semana: sel.diaSemana,
             hora_inicio: sel.horaInicio,
@@ -49,18 +53,18 @@ export class PublicadorHorarios {
       // Insertar todas las selecciones en la BD
       const creados = [];
       for (const sel of selecciones) {
-        const horario = await tx.horario_asignado.create({
+        const horario = await tx.bloque_horario.create({
           data: {
             id_periodo: idPeriodo,
             id_docente: sel.idDocente,
-            id_curso: sel.idCurso,
-            id_grupo: sel.idGrupo || null,
-            id_ambiente: sel.idAmbiente,
-            tipo_clase: sel.tipoClase,
+            id_componente: sel.idComponente,
+            id_grupo: sel.idGrupo,
+            id_ambiente: sel.idAmbiente || null,
             dia_semana: sel.diaSemana,
             hora_inicio: sel.horaInicio,
             hora_fin: sel.horaFin,
             estado: 'BORRADOR',
+            pendiente_ambiente: !sel.idAmbiente,
           },
         });
         creados.push(horario);
@@ -92,12 +96,12 @@ export class PublicadorHorarios {
    * Cambiar estado de un horario individual
    */
   static async cambiarEstadoHorario(idHorario: number, nuevoEstado: string, usuario: string) {
-    const horario = await prisma.horario_asignado.findUnique({ where: { id: idHorario } });
+    const horario = await prisma.bloque_horario.findUnique({ where: { id: idHorario } });
     if (!horario) throw new Error('Horario no encontrado');
 
     const estadoAnterior = horario.estado;
 
-    const actualizado = await prisma.horario_asignado.update({
+    const actualizado = await prisma.bloque_horario.update({
       where: { id: idHorario },
       data: { estado: nuevoEstado },
     });
@@ -105,7 +109,7 @@ export class PublicadorHorarios {
     // Registrar auditoría
     await prisma.auditoria_horario.create({
       data: {
-        id_horario: idHorario,
+        id_bloque_horario: idHorario,
         tipo_accion: 'CAMBIO_ESTADO',
         usuario,
         detalle: `Estado cambiado de ${estadoAnterior} a ${nuevoEstado}`,
@@ -121,7 +125,7 @@ export class PublicadorHorarios {
    */
   static async publicarPeriodo(idPeriodo: number, usuario: string) {
     return prisma.$transaction(async (tx) => {
-      const horarios = await tx.horario_asignado.findMany({
+      const horarios = await tx.bloque_horario.findMany({
         where: { id_periodo: idPeriodo, estado: 'BORRADOR' },
       });
 
@@ -135,7 +139,7 @@ export class PublicadorHorarios {
         throw new Error('Existen conflictos que deben resolverse antes de publicar');
       }
 
-      await tx.horario_asignado.updateMany({
+      await tx.bloque_horario.updateMany({
         where: { id_periodo: idPeriodo, estado: 'BORRADOR' },
         data: { estado: 'PUBLICADO' },
       });
@@ -144,7 +148,7 @@ export class PublicadorHorarios {
       for (const h of horarios) {
         await tx.auditoria_horario.create({
           data: {
-            id_horario: h.id,
+            id_bloque_horario: h.id,
             tipo_accion: 'PUBLICAR',
             usuario,
             detalle: 'Horario publicado',
@@ -161,7 +165,7 @@ export class PublicadorHorarios {
    */
   static async despublicarPeriodo(idPeriodo: number, usuario: string) {
     return prisma.$transaction(async (tx) => {
-      const horarios = await tx.horario_asignado.findMany({
+      const horarios = await tx.bloque_horario.findMany({
         where: { id_periodo: idPeriodo, estado: 'PUBLICADO' },
       });
 
@@ -169,7 +173,7 @@ export class PublicadorHorarios {
         throw new Error('No hay horarios publicados para despublicar');
       }
 
-      await tx.horario_asignado.updateMany({
+      await tx.bloque_horario.updateMany({
         where: { id_periodo: idPeriodo, estado: 'PUBLICADO' },
         data: { estado: 'BORRADOR' },
       });
@@ -177,7 +181,7 @@ export class PublicadorHorarios {
       for (const h of horarios) {
         await tx.auditoria_horario.create({
           data: {
-            id_horario: h.id,
+            id_bloque_horario: h.id,
             tipo_accion: 'DESPUBLICAR',
             usuario,
             detalle: 'Horario despublicado',
@@ -198,7 +202,7 @@ export class PublicadorHorarios {
     // 1. Cruce de docente (mismo docente, mismo día/hora)
     const crucesDocente = await prisma.$queryRaw<Array<{ id_docente: number; dia_semana: string; hora_inicio: string; count: number }>>`
       SELECT id_docente, dia_semana, hora_inicio, COUNT(*) as count
-      FROM horario_asignado
+      FROM bloque_horario
       WHERE id_periodo = ${idPeriodo}
         AND estado IN ('CONFIRMADO', 'PUBLICADO', 'BORRADOR')
       GROUP BY id_docente, dia_semana, hora_inicio
@@ -217,7 +221,7 @@ export class PublicadorHorarios {
     // 2. Cruce de ambiente (mismo ambiente, mismo día/hora)
     const crucesAmbiente = await prisma.$queryRaw<Array<{ id_ambiente: number; dia_semana: string; hora_inicio: string; count: number }>>`
       SELECT id_ambiente, dia_semana, hora_inicio, COUNT(*) as count
-      FROM horario_asignado
+      FROM bloque_horario
       WHERE id_periodo = ${idPeriodo}
         AND estado IN ('CONFIRMADO', 'PUBLICADO', 'BORRADOR')
       GROUP BY id_ambiente, dia_semana, hora_inicio
@@ -236,7 +240,7 @@ export class PublicadorHorarios {
     // 3. Cruce de grupo (mismo grupo, mismo día/hora)
     const crucesGrupo = await prisma.$queryRaw<Array<{ id_grupo: number; dia_semana: string; hora_inicio: string; count: number }>>`
       SELECT id_grupo, dia_semana, hora_inicio, COUNT(*) as count
-      FROM horario_asignado
+      FROM bloque_horario
       WHERE id_periodo = ${idPeriodo}
         AND id_grupo IS NOT NULL
         AND estado IN ('CONFIRMADO', 'PUBLICADO', 'BORRADOR')
@@ -247,11 +251,11 @@ export class PublicadorHorarios {
     for (const cruce of crucesGrupo) {
       const grupo = await prisma.grupo.findUnique({
         where: { id: cruce.id_grupo },
-        include: { curso: true },
+        include: { componente: { include: { oferta: { include: { curso: true } } } } },
       });
       conflictos.push({
         tipo: 'CRUCE_GRUPO',
-        descripcion: `El grupo ${grupo?.codigo_grupo} de ${grupo?.curso.nombre} tiene ${cruce.count} clases el ${cruce.dia_semana} a las ${cruce.hora_inicio}`,
+        descripcion: `El grupo ${grupo?.codigo} de ${grupo?.componente.oferta.curso.nombre} tiene ${cruce.count} clases el ${cruce.dia_semana} a las ${cruce.hora_inicio}`,
         involucrados: [`Grupo ID ${cruce.id_grupo}`],
       });
     }

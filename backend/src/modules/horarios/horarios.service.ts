@@ -13,15 +13,32 @@ export class HorariosService {
   }
 
   /**
+   * Obtener bloques horarios pendientes de asignación de ambiente
+   */
+  static async obtenerPendientesAmbiente() {
+    return prisma.bloque_horario.findMany({
+      where: {
+        pendiente_ambiente: true,
+        estado: { in: ['BORRADOR', 'CONFIRMADO'] },
+      },
+      include: {
+        docente: true,
+        componente: { include: { oferta: { include: { curso: true } } } },
+        grupo: true,
+      },
+      orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],
+    });
+  }
+
+  /**
    * Seleccionar una celda (guardado temporal en Redis)
    */
   static async seleccionarCelda(datos: {
     idDocente: number;
-    idCurso: number;
-    idGrupo?: number;
-    idAmbiente: number;
+    idComponente: number;
+    idGrupo: number;
+    idAmbiente?: number;
     modoPrueba?: boolean;
-    tipoClase: string;
     diaSemana: string;
     horaInicio: string;
     horaFin: string;
@@ -29,12 +46,12 @@ export class HorariosService {
   }) {
     await this.validarDatosSeleccion(datos);
 
-    await GestorSeleccionTemporal.seleccionarCelda(datos);
+    await GestorSeleccionTemporal.seleccionarCelda(datos as any);
 
     // Publicar evento para notificar a otros clientes
     await redis.publish(
       'canal:disponibilidad',
-      JSON.stringify({ tipo: 'celda_seleccionada', idAmbiente: datos.idAmbiente })
+      JSON.stringify({ tipo: 'celda_seleccionada', idAmbiente: datos.idAmbiente || 0 })
     );
 
     return { mensaje: 'Celda seleccionada temporalmente' };
@@ -42,74 +59,69 @@ export class HorariosService {
 
   private static async validarDatosSeleccion(datos: {
     idDocente: number;
-    idCurso: number;
-    idGrupo?: number;
-    idAmbiente: number;
+    idComponente: number;
+    idGrupo: number;
+    idAmbiente?: number;
     modoPrueba?: boolean;
-    tipoClase: string;
     diaSemana: string;
     horaInicio: string;
     horaFin: string;
   }) {
-    const [docente, curso, ambiente] = await Promise.all([
+    const [docente, componente, ambiente, grupo] = await Promise.all([
       prisma.docente.findUnique({ where: { id: datos.idDocente } }),
-      prisma.curso.findUnique({ where: { id: datos.idCurso } }),
-      prisma.ambiente.findUnique({ where: { id: datos.idAmbiente } }),
+      prisma.curso_componente.findUnique({
+        where: { id: datos.idComponente },
+        include: { oferta: true },
+      }),
+      datos.idAmbiente ? prisma.ambiente.findUnique({ where: { id: datos.idAmbiente } }) : Promise.resolve(null),
+      prisma.grupo.findUnique({ where: { id: datos.idGrupo } }),
     ]);
 
     if (!docente || !docente.activo) throw new Error('Docente inválido o inactivo');
-    if (!curso) throw new Error('Curso inválido');
-    if (!ambiente || !ambiente.activo) throw new Error('Ambiente inválido o inactivo');
+    if (!componente) throw new Error('Componente inválido');
+    if (datos.idAmbiente && (!ambiente || !ambiente.activo)) throw new Error('Ambiente inválido o inactivo');
+    if (!grupo || !grupo.activo) throw new Error('Grupo inválido o inactivo');
+    if (grupo.id_componente !== datos.idComponente) throw new Error('El grupo no corresponde al componente seleccionado');
 
-    const docenteCurso = await prisma.docente_curso.findFirst({
+    const asignacion = await prisma.asignacion_docente_componente.findFirst({
       where: {
         id_docente: datos.idDocente,
-        id_curso: datos.idCurso,
+        id_componente: datos.idComponente,
       },
     });
-    if (!docenteCurso) {
-      throw new Error('El docente no tiene asignado este curso');
+    if (!asignacion) {
+      throw new Error('El docente no tiene asignado este componente');
     }
 
-    const compatibilidadAmbiente = await prisma.curso_ambiente.findFirst({
-      where: {
-        id_curso: datos.idCurso,
-        id_ambiente: datos.idAmbiente,
-        tipo_clase: datos.tipoClase,
-      },
-    });
-    if (!compatibilidadAmbiente) {
-      throw new Error('El curso no es compatible con el ambiente/tipo de clase seleccionado');
-    }
-
-    if (datos.idGrupo) {
-      const grupo = await prisma.grupo.findUnique({ where: { id: datos.idGrupo } });
-      if (!grupo || !grupo.activo) throw new Error('Grupo inválido o inactivo');
-      if (grupo.id_curso !== datos.idCurso) {
-        throw new Error('El grupo no corresponde al curso seleccionado');
+    if (datos.idAmbiente && ambiente) {
+      const tipoRequerido = componente.tipo === 'LABORATORIO' ? 'LABORATORIO' : 'AULA';
+      if (componente.tipo === 'PRACTICA' && ambiente.tipo === 'LABORATORIO') {
+        // permitido
+      } else if (ambiente.tipo !== tipoRequerido) {
+        throw new Error('El componente no es compatible con el tipo de ambiente seleccionado');
       }
 
       if (!datos.modoPrueba && grupo.capacidad_maxima > ambiente.capacidad) {
-        throw new Error(
-          `Aforo insuficiente: grupo ${grupo.capacidad_maxima} > ambiente ${ambiente.capacidad}`
-        );
+        throw new Error(`Aforo insuficiente: grupo ${grupo.capacidad_maxima} > ambiente ${ambiente.capacidad}`);
+      }
+
+      const conflictoAmbiente = await prisma.bloque_horario.findFirst({
+        where: {
+          id_periodo: componente.oferta.id_periodo,
+          id_ambiente: datos.idAmbiente,
+          dia_semana: datos.diaSemana,
+          hora_inicio: datos.horaInicio,
+          estado: { in: ['BORRADOR', 'CONFIRMADO', 'PUBLICADO'] },
+        },
+      });
+      if (conflictoAmbiente) {
+        throw new Error('El ambiente ya está ocupado en ese bloque horario');
       }
     }
 
-    const conflictoAmbiente = await prisma.horario_asignado.findFirst({
+    const conflictoDocente = await prisma.bloque_horario.findFirst({
       where: {
-        id_ambiente: datos.idAmbiente,
-        dia_semana: datos.diaSemana,
-        hora_inicio: datos.horaInicio,
-        estado: { in: ['BORRADOR', 'CONFIRMADO', 'PUBLICADO'] },
-      },
-    });
-    if (conflictoAmbiente) {
-      throw new Error('El ambiente ya está ocupado en ese bloque horario');
-    }
-
-    const conflictoDocente = await prisma.horario_asignado.findFirst({
-      where: {
+        id_periodo: componente.oferta.id_periodo,
         id_docente: datos.idDocente,
         dia_semana: datos.diaSemana,
         hora_inicio: datos.horaInicio,
@@ -125,19 +137,21 @@ export class HorariosService {
    * Deseleccionar una celda
    */
   static async deseleccionarCelda(datos: {
-    idAmbiente: number;
+    idAmbiente?: number;
     diaSemana: string;
     horaInicio: string;
+    idDocente: number;
   }) {
     await GestorSeleccionTemporal.deseleccionarCelda(
-      datos.idAmbiente,
+      datos.idAmbiente || 0,
       datos.diaSemana,
-      datos.horaInicio
+      datos.horaInicio,
+      datos.idDocente
     );
 
     await redis.publish(
       'canal:disponibilidad',
-      JSON.stringify({ tipo: 'celda_deseleccionada', idAmbiente: datos.idAmbiente })
+      JSON.stringify({ tipo: 'celda_deseleccionada', idAmbiente: datos.idAmbiente || 0 })
     );
 
     return { mensaje: 'Celda liberada' };
@@ -152,11 +166,17 @@ export class HorariosService {
     // Enriquecer con nombres
     const enriquecidas = await Promise.all(
       selecciones.map(async (sel) => {
-        const curso = await prisma.curso.findUnique({ where: { id: sel.idCurso } });
+        const componente = await prisma.curso_componente.findUnique({
+          where: { id: sel.idComponente },
+          include: { oferta: { include: { curso: true } } },
+        });
         const ambiente = await prisma.ambiente.findUnique({ where: { id: sel.idAmbiente } });
+        const grupo = await prisma.grupo.findUnique({ where: { id: sel.idGrupo } });
         return {
           ...sel,
-          nombreCurso: curso?.nombre || '',
+          nombreCurso: componente?.oferta?.curso?.nombre || '',
+          tipoComponente: componente?.tipo || '',
+          codigoGrupo: grupo?.codigo || '',
           codigoAmbiente: ambiente?.codigo || '',
         };
       })
@@ -176,40 +196,22 @@ export class HorariosService {
    * Calcular progreso de horas por curso para un docente
    */
   static async obtenerProgreso(idDocente: number) {
-    const docenteCursos = await prisma.docente_curso.findMany({
+    const asignaciones = await prisma.asignacion_docente_componente.findMany({
       where: { id_docente: idDocente },
-      include: { curso: true },
+      include: { componente: { include: { oferta: { include: { curso: true } } } } },
     });
 
     const selecciones = await GestorSeleccionTemporal.obtenerSeleccionesDocente(idDocente);
 
-    return docenteCursos.flatMap((dc) => {
-      const progreso = [];
-      if (dc.curso.horas_teoria > 0) {
-        const asignadas = selecciones.filter(
-          (s) => s.idCurso === dc.id_curso && s.tipoClase === 'TEORIA'
-        ).length;
-        progreso.push({
-          idCurso: dc.curso.id,
-          nombreCurso: dc.curso.nombre,
-          tipoClase: 'TEORIA',
-          horasRequeridas: dc.curso.horas_teoria,
-          horasAsignadas: asignadas,
-        });
-      }
-      if (dc.curso.horas_laboratorio > 0) {
-        const asignadas = selecciones.filter(
-          (s) => s.idCurso === dc.id_curso && s.tipoClase === 'LABORATORIO'
-        ).length;
-        progreso.push({
-          idCurso: dc.curso.id,
-          nombreCurso: dc.curso.nombre,
-          tipoClase: 'LABORATORIO',
-          horasRequeridas: dc.curso.horas_laboratorio,
-          horasAsignadas: asignadas,
-        });
-      }
-      return progreso;
+    return asignaciones.map((a) => {
+      const horasAsignadas = selecciones.filter((s) => s.idComponente === a.id_componente).length;
+      return {
+        idComponente: a.id_componente,
+        nombreCurso: a.componente.oferta.curso.nombre,
+        tipoComponente: a.componente.tipo,
+        horasRequeridas: a.horas_asignadas,
+        horasAsignadas,
+      };
     });
   }
 }

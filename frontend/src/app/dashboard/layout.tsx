@@ -23,16 +23,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Protección de rutas por rol
   useEffect(() => {
     if (estaAutenticado && usuario) {
-      const rutasAdmin = ['/admin', '/ambientes', '/configuracion', '/cursos', '/docentes', '/periodos', '/reportes'];
+      const rutasAdmin = ['/admin', '/ambientes', '/configuracion', '/cursos', '/docentes', '/periodos', '/reportes', '/director'];
       const esRutaAdmin = rutasAdmin.some((ruta) => pathname.startsWith(`/dashboard${ruta}`));
       const esRutaDocente = pathname === '/dashboard/docente' || pathname.startsWith('/dashboard/docente/');
 
-      if (usuario.rol !== 'ADMINISTRADOR' && (esRutaAdmin || pathname === '/dashboard')) {
-        router.replace('/dashboard/docente');
+      const esAdministrativo = usuario.rol === 'ADMINISTRADOR' || usuario.rol === 'DIRECTOR' || usuario.rol === 'SECRETARIA';
+
+      // Si es administrativo y está en ruta docente, mandarlo a admin
+      if (esAdministrativo && (esRutaDocente || pathname === '/dashboard')) {
+        router.replace('/dashboard/admin');
+        return;
       }
 
-      if (usuario.rol === 'ADMINISTRADOR' && esRutaDocente) {
-        router.replace('/dashboard/admin');
+      // Si es docente y está en ruta admin, mandarlo a docente
+      if (usuario.rol === 'DOCENTE' && (esRutaAdmin || pathname === '/dashboard' || pathname === '/dashboard/admin')) {
+        router.replace('/dashboard/docente');
+        return;
       }
     }
   }, [estaAutenticado, usuario, pathname, router]);

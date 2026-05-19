@@ -6,11 +6,10 @@ export interface CeldaHorario {
 
 export interface SeleccionTemporal {
   idDocente: number;
-  idCurso: number;
-  idGrupo?: number;
+  idComponente: number;
+  idGrupo: number;
   idAmbiente: number;
   modoPrueba?: boolean;
-  tipoClase: string;
   diaSemana: string;
   horaInicio: string;
   horaFin: string;
@@ -39,22 +38,21 @@ export interface ValidacionResultado {
 }
 
 export interface ProgresoCurso {
-  idCurso: number;
+  idComponente: number;
   nombreCurso: string;
-  tipoClase: string;
+  tipoComponente: string;
   horasRequeridas: number;
   horasAsignadas: number;
 }
 
 // Añadir estos tipos al archivo existente
-export interface HorarioAsignado {
+export interface BloqueHorario {
   id: number;
   idPeriodo: number;
   idDocente: number;
-  idCurso: number;
-  idGrupo?: number;
-  idAmbiente: number;
-  tipoClase: string;
+  idComponente: number;
+  idGrupo: number;
+  idAmbiente?: number | null;
   diaSemana: string;
   horaInicio: string;
   horaFin: string;
@@ -70,7 +68,7 @@ export interface ConflictoGlobal {
 
 export interface RegistroAuditoria {
   id: number;
-  idHorario?: number;
+  idBloqueHorario?: number;
   tipoAccion: string;
   usuario: string;
   fecha: Date;

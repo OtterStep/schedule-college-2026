@@ -20,14 +20,15 @@ export class AmbientesService {
     return prisma.ambiente.findUnique({
       where: { id },
       include: {
-        cursos_asignados: {
-          include: { curso: true },
-        },
-        horarios: {
+        bloques: {
           include: {
-            curso: true,
             docente: true,
+            grupo: { include: { componente: { include: { oferta: { include: { curso: true } } } } } },
+            componente: { include: { oferta: { include: { curso: true } } } },
           },
+          orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],
+        },
+        disponibilidad: {
           orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],
         },
         mantenimientos: {
@@ -108,12 +109,12 @@ export class AmbientesService {
     const ambiente = await prisma.ambiente.findUnique({
       where: { id },
       include: {
-        horarios: {
+        bloques: {
           where: {
             estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
           },
           include: {
-            curso: true,
+            componente: { include: { oferta: { include: { curso: true } } } },
             docente: true,
           },
         },
@@ -171,7 +172,7 @@ export class AmbientesService {
     const ambientes = await prisma.ambiente.findMany({
       where: { activo: true },
       include: {
-        horarios: {
+        bloques: {
           where: {
             id_periodo: idPeriodo,
             estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
@@ -180,7 +181,7 @@ export class AmbientesService {
             dia_semana: true,
             hora_inicio: true,
             hora_fin: true,
-            tipo_clase: true,
+            id_componente: true,
           },
         },
       },

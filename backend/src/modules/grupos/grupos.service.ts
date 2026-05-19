@@ -8,9 +8,13 @@ export class GruposService {
     return prisma.grupo.findMany({
       where: { activo: true },
       include: {
-        curso: true,
+        componente: {
+          include: {
+            oferta: { include: { curso: true, periodo: true, ciclo: true } },
+          },
+        },
       },
-      orderBy: [{ curso: { nombre: 'asc' } }, { codigo_grupo: 'asc' }],
+      orderBy: [{ componente: { oferta: { curso: { nombre: 'asc' } } } }, { codigo: 'asc' }],
     });
   }
 
@@ -21,8 +25,10 @@ export class GruposService {
     return prisma.grupo.findUnique({
       where: { id },
       include: {
-        curso: true,
-        horarios: {
+        componente: {
+          include: { oferta: { include: { curso: true, periodo: true, ciclo: true } } },
+        },
+        bloques: {
           include: {
             docente: true,
             ambiente: true,
@@ -33,63 +39,62 @@ export class GruposService {
   }
 
   /**
-   * Listar grupos de un curso específico
+   * Listar grupos de un componente específico
    */
-  static async listarPorCurso(idCurso: number) {
+  static async listarPorComponente(idComponente: number) {
     return prisma.grupo.findMany({
-      where: { id_curso: idCurso },
-      orderBy: { codigo_grupo: 'asc' },
+      where: { id_componente: idComponente, activo: true },
+      orderBy: { codigo: 'asc' },
     });
   }
 
   /**
-   * Crear un nuevo grupo para un curso
+   * Crear un nuevo grupo para un componente
    */
   static async crear(datos: {
-    id_curso: number;
-    codigo_grupo: string;
+    id_componente: number;
+    codigo: string;
     capacidad_maxima: number;
   }) {
-    // Verificar que el curso existe
-    const curso = await prisma.curso.findUnique({ where: { id: datos.id_curso } });
-    if (!curso) throw new Error('Curso no encontrado');
+    const componente = await prisma.curso_componente.findUnique({ where: { id: datos.id_componente } });
+    if (!componente) throw new Error('Componente no encontrado');
 
-    // Verificar que no exista otro grupo con el mismo código en el mismo curso
+    // Verificar que no exista otro grupo con el mismo código en el mismo componente
     const existente = await prisma.grupo.findFirst({
       where: {
-        id_curso: datos.id_curso,
-        codigo_grupo: datos.codigo_grupo,
+        id_componente: datos.id_componente,
+        codigo: datos.codigo,
       },
     });
 
     if (existente) {
-      throw new Error('Ya existe un grupo con ese código en este curso');
+      throw new Error('Ya existe un grupo con ese código en este componente');
     }
 
     return prisma.grupo.create({
       data: {
-        id_curso: datos.id_curso,
-        codigo_grupo: datos.codigo_grupo,
+        id_componente: datos.id_componente,
+        codigo: datos.codigo,
         capacidad_maxima: datos.capacidad_maxima,
       },
     });
   }
 
   /**
-   * Crear múltiples grupos para un curso: se puede pasar `codigos` explícitos
+   * Crear múltiples grupos para un componente.
    * o `cantidad` para generar códigos consecutivos (A, B, C, ...).
    */
-  static async crearMultiplesPorCurso(idCurso: number, datos: { cantidad?: number; codigos?: string[]; capacidad_maxima?: number }) {
-    const curso = await prisma.curso.findUnique({ where: { id: idCurso } });
-    if (!curso) throw new Error('Curso no encontrado');
+  static async crearMultiplesPorComponente(idComponente: number, datos: { cantidad?: number; codigos?: string[]; capacidad_maxima?: number }) {
+    const componente = await prisma.curso_componente.findUnique({ where: { id: idComponente } });
+    if (!componente) throw new Error('Componente no encontrado');
 
     const cantidad = datos.cantidad && datos.cantidad > 0 ? datos.cantidad : 1;
     const existentes = await prisma.grupo.findMany({
-      where: { id_curso: idCurso },
-      select: { codigo_grupo: true },
+      where: { id_componente: idComponente },
+      select: { codigo: true },
     });
 
-    const existentesSet = new Set(existentes.map((g) => g.codigo_grupo.toUpperCase()));
+    const existentesSet = new Set(existentes.map((g) => g.codigo.toUpperCase()));
     const genCodigo = (index: number) => {
       let num = index;
       let str = '';
@@ -100,22 +105,28 @@ export class GruposService {
       return str;
     };
 
-    const codes: string[] = [];
-    let i = 0;
-    while (codes.length < cantidad) {
-      const codigo = genCodigo(i);
-      if (!existentesSet.has(codigo)) {
-        codes.push(codigo);
-        existentesSet.add(codigo);
-      }
-      i += 1;
-    }
+    const codes: string[] =
+      datos.codigos && datos.codigos.length > 0
+        ? datos.codigos.map((c) => c.toUpperCase())
+        : (() => {
+            const generados: string[] = [];
+            let i = 0;
+            while (generados.length < cantidad) {
+              const codigo = genCodigo(i);
+              if (!existentesSet.has(codigo)) {
+                generados.push(codigo);
+                existentesSet.add(codigo);
+              }
+              i += 1;
+            }
+            return generados;
+          })();
 
     const creados = [] as any[];
     const saltados: string[] = [];
 
     for (const codigo of codes) {
-      const existente = await prisma.grupo.findFirst({ where: { id_curso: idCurso, codigo_grupo: codigo } });
+      const existente = await prisma.grupo.findFirst({ where: { id_componente: idComponente, codigo } });
       if (existente) {
         saltados.push(codigo);
         continue;
@@ -123,8 +134,8 @@ export class GruposService {
 
       const creado = await prisma.grupo.create({
         data: {
-          id_curso: idCurso,
-          codigo_grupo: codigo,
+          id_componente: idComponente,
+          codigo,
           capacidad_maxima: datos.capacidad_maxima ?? 40,
         },
       });
@@ -137,22 +148,22 @@ export class GruposService {
   /**
    * Actualizar un grupo existente
    */
-  static async actualizar(id: number, datos: { codigo_grupo?: string; capacidad_maxima?: number }) {
+  static async actualizar(id: number, datos: { codigo?: string; capacidad_maxima?: number }) {
     // Si se cambia el código, verificar que no exista duplicado
-    if (datos.codigo_grupo) {
+    if (datos.codigo) {
       const grupo = await prisma.grupo.findUnique({ where: { id } });
       if (!grupo) throw new Error('Grupo no encontrado');
 
       const existente = await prisma.grupo.findFirst({
         where: {
-          id_curso: grupo.id_curso,
-          codigo_grupo: datos.codigo_grupo,
+          id_componente: grupo.id_componente,
+          codigo: datos.codigo,
           NOT: { id },
         },
       });
 
       if (existente) {
-        throw new Error('Ya existe otro grupo con ese código en este curso');
+        throw new Error('Ya existe otro grupo con ese código en este componente');
       }
     }
 
@@ -182,8 +193,10 @@ export class GruposService {
   static async obtenerOcupacion(idPeriodo?: number) {
     const grupos = await prisma.grupo.findMany({
       include: {
-        curso: true,
-        horarios: {
+        componente: {
+          include: { oferta: { include: { curso: true } } },
+        },
+        bloques: {
           where: idPeriodo
             ? { id_periodo: idPeriodo, estado: { in: ['CONFIRMADO', 'PUBLICADO'] } }
             : { estado: { in: ['CONFIRMADO', 'PUBLICADO'] } },
@@ -194,9 +207,9 @@ export class GruposService {
 
     return grupos.map((grupo) => ({
       ...grupo,
-      horarios_asignados: grupo.horarios.length,
+      horarios_asignados: grupo.bloques.length,
       porcentaje_ocupacion: grupo.capacidad_maxima > 0
-        ? Math.round((grupo.horarios.length / grupo.capacidad_maxima) * 100)
+        ? Math.round((grupo.bloques.length / grupo.capacidad_maxima) * 100)
         : 0,
     }));
   }

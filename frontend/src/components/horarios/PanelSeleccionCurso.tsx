@@ -1,50 +1,38 @@
 'use client';
 import { Selector } from '@/components/ui/Selector';
 
-interface CursoAsignable {
-  idCurso: number;
+interface ComponenteAsignable {
+  idComponente: number;
   nombreCurso: string;
-  tipoClase: string;
+  tipoComponente: string;
   horasRequeridas: number;
   horasAsignadas: number;
 }
 
 interface PanelSeleccionCursoProps {
-  cursos: CursoAsignable[];
-  cursoSeleccionado: number | null;
-  tipoSeleccionado: string;
-  alCambiarCurso: (idCurso: number, tipo: string) => void;
+  componentes: ComponenteAsignable[];
+  componenteSeleccionado: number | null;
+  alCambiarComponente: (idComponente: number) => void;
 }
 
 export function PanelSeleccionCurso({
-  cursos,
-  cursoSeleccionado,
-  tipoSeleccionado,
-  alCambiarCurso,
+  componentes,
+  componenteSeleccionado,
+  alCambiarComponente,
 }: PanelSeleccionCursoProps) {
-  const cursosUnicos = Array.from(new Map(cursos.map((c) => [c.idCurso, c])).values());
-
   return (
     <div className="flex gap-4 p-4 bg-white rounded shadow">
       <Selector
-        label="Curso"
+        label="Componente"
         opciones={[
-          { valor: '', etiqueta: 'Seleccionar curso' },
-          ...cursosUnicos.map((c) => ({ valor: String(c.idCurso), etiqueta: c.nombreCurso })),
+          { valor: '', etiqueta: 'Seleccionar componente' },
+          ...componentes.map((c) => ({
+            valor: String(c.idComponente),
+            etiqueta: `${c.nombreCurso} - ${c.tipoComponente}`,
+          })),
         ]}
-        value={cursoSeleccionado?.toString() || ''}
-        onChange={(e) => alCambiarCurso(parseInt(e.target.value), tipoSeleccionado)}
-      />
-      <Selector
-        label="Tipo"
-        opciones={[
-          { valor: 'TEORIA', etiqueta: 'Teoría' },
-          { valor: 'LABORATORIO', etiqueta: 'Laboratorio' },
-        ]}
-        value={tipoSeleccionado}
-        onChange={(e) =>
-          alCambiarCurso(cursoSeleccionado || 0, e.target.value)
-        }
+        value={componenteSeleccionado?.toString() || ''}
+        onChange={(e) => alCambiarComponente(e.target.value ? parseInt(e.target.value) : 0)}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { GruposService } from './grupos.service';
-import { crearGrupoSchema, actualizarGrupoSchema, crearGrupoPorCursoSchema, crearGruposMasivoSchema } from './grupos.schema';
+import { crearGrupoSchema, actualizarGrupoSchema, crearGruposMasivoSchema } from './grupos.schema';
 
 export class GruposController {
   /**
@@ -23,25 +23,25 @@ export class GruposController {
   }
 
   /**
-   * POST /api/grupos/por-curso/:cursoId
-   * Crear múltiples grupos para un curso (cantidad o lista de codigos)
+   * POST /api/grupos/por-componente/:componenteId
+   * Crear múltiples grupos para un componente (cantidad o lista de codigos)
    */
-  static async crearPorCurso(req: Request, res: Response) {
+  static async crearPorComponente(req: Request, res: Response) {
     try {
-      const idCurso = parseInt(req.params.cursoId);
-      if (isNaN(idCurso)) return res.status(400).json({ error: 'ID de curso inválido' });
+      const idComponente = parseInt(req.params.componenteId);
+      if (isNaN(idComponente)) return res.status(400).json({ error: 'ID de componente inválido' });
 
       const datos = crearGruposMasivoSchema.parse(req.body);
-      const resultado = await GruposService.crearMultiplesPorCurso(idCurso, datos);
+      const resultado = await GruposService.crearMultiplesPorComponente(idComponente, datos);
       res.status(201).json(resultado);
     } catch (error: any) {
       if (error.name === 'ZodError') {
         return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
       }
-      if (error.message === 'Curso no encontrado') {
+      if (error.message === 'Componente no encontrado') {
         return res.status(404).json({ error: error.message });
       }
-      console.error('Error al crear grupos por curso:', error);
+      console.error('Error al crear grupos por componente:', error);
       res.status(500).json({ error: 'Error al crear los grupos' });
     }
   }
@@ -69,8 +69,8 @@ export class GruposController {
   static async crear(req: Request, res: Response) {
     try {
       const datos = crearGrupoSchema.parse(req.body) as {
-        id_curso: number;
-        codigo_grupo: string;
+        id_componente: number;
+        codigo: string;
         capacidad_maxima: number;
       };
       const grupo = await GruposService.crear(datos);
@@ -79,10 +79,10 @@ export class GruposController {
       if (error.name === 'ZodError') {
         return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
       }
-      if (error.message === 'Curso no encontrado') {
+      if (error.message === 'Componente no encontrado') {
         return res.status(404).json({ error: error.message });
       }
-      if (error.message === 'Ya existe un grupo con ese código en este curso') {
+      if (error.message === 'Ya existe un grupo con ese código en este componente') {
         return res.status(409).json({ error: error.message });
       }
       console.error('Error al crear grupo:', error);
@@ -105,7 +105,7 @@ export class GruposController {
       if (error.name === 'ZodError') {
         return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
       }
-      if (error.message === 'Ya existe otro grupo con ese código en este curso') {
+      if (error.message === 'Ya existe otro grupo con ese código en este componente') {
         return res.status(409).json({ error: error.message });
       }
       console.error('Error al actualizar grupo:', error);
@@ -143,18 +143,18 @@ export class GruposController {
   }
 
   /**
-   * GET /api/grupos/por-curso/:cursoId
+   * GET /api/grupos/por-componente/:componenteId
    */
-  static async listarPorCurso(req: Request, res: Response) {
+  static async listarPorComponente(req: Request, res: Response) {
     try {
-      const idCurso = parseInt(req.params.cursoId);
-      if (isNaN(idCurso)) return res.status(400).json({ error: 'ID de curso inválido' });
+      const idComponente = parseInt(req.params.componenteId);
+      if (isNaN(idComponente)) return res.status(400).json({ error: 'ID de componente inválido' });
 
-      const grupos = await GruposService.listarPorCurso(idCurso);
+      const grupos = await GruposService.listarPorComponente(idComponente);
       res.json(grupos);
     } catch (error) {
-      console.error('Error al listar grupos por curso:', error);
-      res.status(500).json({ error: 'Error al obtener los grupos del curso' });
+      console.error('Error al listar grupos por componente:', error);
+      res.status(500).json({ error: 'Error al obtener los grupos del componente' });
     }
   }
 }

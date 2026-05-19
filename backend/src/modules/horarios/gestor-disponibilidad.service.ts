@@ -26,7 +26,7 @@ export class GestorDisponibilidad {
     const almuerzoFin = mapaConfig['BLOQUEO_ALMUERZO_FIN'] || '13:00';
 
     // Obtener horarios ya asignados (CONFIRMADO/PUBLICADO)
-    const horariosAsignados = await prisma.horario_asignado.findMany({
+    const horariosAsignados = await prisma.bloque_horario.findMany({
       where: {
         id_ambiente: idAmbiente,
         id_periodo: idPeriodo,

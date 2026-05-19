@@ -6,9 +6,9 @@ interface HorarioAula {
   dia_semana: string;
   hora_inicio: string;
   hora_fin: string;
-  curso: { nombre: string; codigo: string } | null;
+  componente: { tipo: string; oferta: { curso: { nombre: string; codigo: string } } } | null;
   docente: { nombres: string; apellidos: string } | null;
-  tipo_clase: string;
+  grupo: { codigo: string } | null;
   estado: string;
 }
 
@@ -55,11 +55,11 @@ export function VistaHorarioAula({ horarios }: VistaHorarioAulaProps) {
                   >
                     {h && (
                       <div>
-                        <p className="font-semibold">{h.curso?.nombre || 'Sin curso'}</p>
+                        <p className="font-semibold">{h.componente?.oferta?.curso?.nombre || 'Sin curso'}</p>
                         <p className="text-gray-600">
                           {h.docente?.nombres} {h.docente?.apellidos}
                         </p>
-                        <p className="italic text-gray-500">{h.tipo_clase}</p>
+                        <p className="italic text-gray-500">{h.componente?.tipo || ''}{h.grupo?.codigo ? ` - G${h.grupo.codigo}` : ''}</p>
                       </div>
                     )}
                   </td>

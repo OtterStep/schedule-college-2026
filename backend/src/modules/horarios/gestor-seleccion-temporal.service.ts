@@ -4,12 +4,15 @@ import { SeleccionTemporal } from './horarios.types';
 const TTL_SEGUNDOS = 600; // 10 minutos de expiración para selecciones temporales
 
 export class GestorSeleccionTemporal {
-  static generarClave(idAmbiente: number, diaSemana: string, horaInicio: string): string {
+  static generarClave(idAmbiente: number, diaSemana: string, horaInicio: string, idDocente?: number): string {
+    if (!idAmbiente || idAmbiente === 0) {
+      return `seleccion_temporal:request:${idDocente}:${diaSemana}:${horaInicio}`;
+    }
     return `seleccion_temporal:${idAmbiente}:${diaSemana}:${horaInicio}`;
   }
 
   static async seleccionarCelda(seleccion: SeleccionTemporal): Promise<void> {
-    const clave = this.generarClave(seleccion.idAmbiente, seleccion.diaSemana, seleccion.horaInicio);
+    const clave = this.generarClave(seleccion.idAmbiente || 0, seleccion.diaSemana, seleccion.horaInicio, seleccion.idDocente);
 
     // Intentar establecer la selección de forma atómica usando SET NX.
     // Si la clave no existe, SET con NX devolverá 'OK' y la reserva se realiza.
@@ -40,9 +43,10 @@ export class GestorSeleccionTemporal {
   static async deseleccionarCelda(
     idAmbiente: number,
     diaSemana: string,
-    horaInicio: string
+    horaInicio: string,
+    idDocente?: number
   ): Promise<void> {
-    const clave = this.generarClave(idAmbiente, diaSemana, horaInicio);
+    const clave = this.generarClave(idAmbiente, diaSemana, horaInicio, idDocente);
     await redis.del(clave);
   }
 

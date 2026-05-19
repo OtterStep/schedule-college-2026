@@ -12,7 +12,7 @@ RUN npm prune --omit=dev
 FROM node:20-bullseye-slim
 WORKDIR /app
 ENV NODE_ENV=production
-RUN npm install -g tsx prisma
+RUN npm install -g tsx@4.7.0 prisma@5.10.0
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma

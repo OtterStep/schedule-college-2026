@@ -40,6 +40,7 @@ export class DocentesService {
         modalidad: datos.modalidad,
         categoria: datos.categoria,
         antiguedad: datos.antiguedad ?? 0,
+        horas_max_semana: datos.horas_max_semana ?? 40,
       },
     });
 

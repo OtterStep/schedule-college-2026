@@ -1,11 +1,13 @@
 import { cn } from '@/lib/utilidades';
 
 interface SeleccionTemporal {
-  idCurso: number;
+  idComponente: number;
+  idGrupo: number;
   nombreCurso: string;
-  tipoClase: string;
+  tipoComponente: string;
   diaSemana: string;
   horaInicio: string;
+  codigoGrupo: string;
   codigoAmbiente: string;
 }
 
@@ -47,7 +49,7 @@ export function VistaHorarioDocente({ selecciones, alQuitarCelda }: VistaHorario
                     )}
                     onClick={() => sel && alQuitarCelda(dia, hora)}
                   >
-                    {sel ? `${sel.nombreCurso} (${sel.tipoClase[0]}) ${sel.codigoAmbiente}` : ''}
+                    {sel ? `${sel.nombreCurso} (${sel.tipoComponente[0]}) G${sel.codigoGrupo} ${sel.codigoAmbiente}` : ''}
                   </td>
                 );
               })}

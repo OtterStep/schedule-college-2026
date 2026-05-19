@@ -18,6 +18,7 @@ router.post('/validar-seleccion', HorariosController.validarSeleccion);
 
 // Progreso
 router.get('/progreso/:docenteId', HorariosController.obtenerProgreso);
+router.get('/pendientes-ambiente', HorariosController.obtenerPendientesAmbiente);
 
 // Confirmar, publicar, despublicar
 router.post('/confirmar-seleccion', HorariosController.confirmarSeleccion);

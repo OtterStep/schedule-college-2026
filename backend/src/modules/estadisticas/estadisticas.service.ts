@@ -1,14 +1,24 @@
 import { prisma } from '@/lib/prisma';
 
+const minutosDesdeHora = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map((v) => parseInt(v, 10));
+  return h * 60 + m;
+};
+
+const duracionHoras = (inicio: string, fin: string) => {
+  const minutos = minutosDesdeHora(fin) - minutosDesdeHora(inicio);
+  return minutos > 0 ? minutos / 60 : 0;
+};
+
 export class EstadisticasService {
   static async obtenerResumen(idPeriodo: number) {
     const totalDocentes = await prisma.docente.count({ where: { activo: true } });
     const totalCursos = await prisma.curso.count();
     const totalAmbientes = await prisma.ambiente.count({ where: { activo: true } });
-    const horariosAsignados = await prisma.horario_asignado.count({
+    const horariosAsignados = await prisma.bloque_horario.count({
       where: { id_periodo: idPeriodo, estado: { in: ['CONFIRMADO', 'PUBLICADO'] } },
     });
-    const horariosBorrador = await prisma.horario_asignado.count({
+    const horariosBorrador = await prisma.bloque_horario.count({
       where: { id_periodo: idPeriodo, estado: 'BORRADOR' },
     });
     const totalHorarios = horariosAsignados + horariosBorrador;
@@ -36,14 +46,14 @@ export class EstadisticasService {
           select: { id: true, nombres: true, apellidos: true },
         });
         const ids = docentes.map((d) => d.id);
-        const asignados = await prisma.horario_asignado.count({
+        const asignados = await prisma.bloque_horario.count({
           where: {
             id_periodo: idPeriodo,
             id_docente: { in: ids },
             estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
           },
         });
-        const pendientes = await prisma.horario_asignado.count({
+        const pendientes = await prisma.bloque_horario.count({
           where: {
             id_periodo: idPeriodo,
             id_docente: { in: ids },
@@ -66,7 +76,7 @@ export class EstadisticasService {
     const ambientes = await prisma.ambiente.findMany({
       where: { activo: true },
       include: {
-        horarios: {
+        bloques: {
           where: {
             id_periodo: idPeriodo,
             estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
@@ -79,7 +89,7 @@ export class EstadisticasService {
       codigo: a.codigo,
       tipo: a.tipo,
       capacidad: a.capacidad,
-      ocupados: a.horarios.length,
+      ocupados: a.bloques.length,
     }));
   }
 
@@ -90,7 +100,7 @@ export class EstadisticasService {
       '14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'
     ];
 
-    const horarios = await prisma.horario_asignado.findMany({
+    const horarios = await prisma.bloque_horario.findMany({
       where: {
         id_periodo: idPeriodo,
         estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
@@ -112,22 +122,22 @@ export class EstadisticasService {
     const docentes = await prisma.docente.findMany({
       where: { activo: true },
       include: {
-        horarios: {
+        bloques: {
           where: {
             id_periodo: idPeriodo,
             estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
           },
+          select: { hora_inicio: true, hora_fin: true },
         },
-        cursos_dictados: {
-          include: { curso: true },
+        asignaciones: {
+          include: { componente: true },
         },
       },
     });
 
     return docentes.map((d) => {
-      const horasAsignadas = d.horarios.length;
-      const horasRequeridas =
-        d.cursos_dictados.reduce((sum, dc) => sum + dc.curso.horas_teoria + dc.curso.horas_laboratorio, 0);
+      const horasAsignadas = d.bloques.reduce((sum, b) => sum + duracionHoras(b.hora_inicio, b.hora_fin), 0);
+      const horasRequeridas = d.asignaciones.reduce((sum, a) => sum + a.horas_asignadas, 0);
       return {
         id: d.id,
         nombres: d.nombres,

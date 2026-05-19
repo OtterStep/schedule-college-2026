@@ -31,10 +31,9 @@ export class HorariosController {
     try {
       const datos = seleccionarCeldaSchema.parse(req.body) as {
         idDocente: number;
-        idCurso: number;
-        idGrupo?: number;
+        idComponente: number;
+        idGrupo: number;
         idAmbiente: number;
-        tipoClase: string;
         diaSemana: string;
         horaInicio: string;
         horaFin: string;
@@ -99,6 +98,15 @@ export class HorariosController {
     }
   }
 
+  static async obtenerPendientesAmbiente(req: Request, res: Response) {
+    try {
+      const pendientes = await HorariosService.obtenerPendientesAmbiente();
+      res.json(pendientes);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
   // ... (métodos existentes de la Fase 5)
 
     static async confirmarSeleccion(req: Request, res: Response) {
@@ -117,9 +125,9 @@ export class HorariosController {
 
     static async cambiarEstado(req: Request, res: Response) {
     try {
-        const { idHorario, nuevoEstado } = cambiarEstadoSchema.parse(req.body);
+        const { idBloqueHorario, nuevoEstado } = cambiarEstadoSchema.parse(req.body);
         const usuario = (req as any).usuario?.email || 'sistema';
-        const horario = await PublicadorHorarios.cambiarEstadoHorario(idHorario, nuevoEstado, usuario);
+        const horario = await PublicadorHorarios.cambiarEstadoHorario(idBloqueHorario, nuevoEstado, usuario);
         res.json(horario);
     } catch (error: any) {
         if (error.name === 'ZodError') {
@@ -180,13 +188,13 @@ export class HorariosController {
         if (idAmbiente) where.id_ambiente = parseInt(idAmbiente as string);
         if (idGrupo) where.id_grupo = parseInt(idGrupo as string);
 
-        const horarios = await prisma.horario_asignado.findMany({
+        const horarios = await prisma.bloque_horario.findMany({
         where,
         include: {
             docente: true,
-            curso: true,
+            componente: { include: { oferta: { include: { curso: true, ciclo: true } } } },
             ambiente: true,
-            grupo: true,
+            grupo: { include: { componente: { include: { oferta: { include: { curso: true } } } } } },
         },
         orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],
         });

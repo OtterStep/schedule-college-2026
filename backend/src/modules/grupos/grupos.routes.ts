@@ -8,8 +8,8 @@ const router: ExpressRouter = Router();
 router.use(middlewareAutenticacion);
 
 // Rutas generales
-router.get('/por-curso/:cursoId', GruposController.listarPorCurso);
-router.post('/por-curso/:cursoId', GruposController.crearPorCurso);
+router.get('/por-componente/:componenteId', GruposController.listarPorComponente);
+router.post('/por-componente/:componenteId', GruposController.crearPorComponente);
 
 // CRUD básico
 router.get('/', GruposController.listar);

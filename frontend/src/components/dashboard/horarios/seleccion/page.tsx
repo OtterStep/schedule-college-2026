@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth.store';
 import { useDisponibilidad } from '@/hooks/useDisponibilidad';
@@ -15,18 +15,18 @@ import { IndicadorProgresoHoras } from '@/components/horarios/IndicadorProgresoH
 import { PanelValidaciones } from '@/components/horarios/PanelValidaciones';
 import { VistaHorarioDocente } from '@/components/horarios/VistaHorarioDocente';
 import { Selector } from '@/components/ui/Selector';
-import { Boton } from '@/components/ui/Boton';
 import { useQueryClient } from '@tanstack/react-query';
+import { gruposService } from '@/services/grupos.service';
+import { ConfirmacionHorario } from '@/components/horarios/ConfirmacionHorario';
 
 export default function SeleccionHorarioPage() {
   const { usuario } = useAuthStore();
   const queryClient = useQueryClient();
   const docenteId = usuario?.idDocente || 0;
 
-  const [ambienteTeoriaId, setAmbienteTeoriaId] = useState<number | null>(null);
-  const [ambienteLabId, setAmbienteLabId] = useState<number | null>(null);
-  const [cursoSeleccionado, setCursoSeleccionado] = useState<number | null>(null);
-  const [tipoSeleccionado, setTipoSeleccionado] = useState('TEORIA');
+  const [ambienteId, setAmbienteId] = useState<number | null>(null);
+  const [componenteSeleccionado, setComponenteSeleccionado] = useState<number | null>(null);
+  const [grupoSeleccionado, setGrupoSeleccionado] = useState<number | null>(null);
   const [sesionId] = useState(crypto.randomUUID());
 
   const { data: periodoActivo } = useQuery({
@@ -46,14 +46,39 @@ export default function SeleccionHorarioPage() {
     enabled: !!docenteId,
   });
 
-  const { data: matriz, actualizarMatriz } = useDisponibilidad(
-    tipoSeleccionado === 'TEORIA' ? ambienteTeoriaId : ambienteLabId,
-    idPeriodo
-  );
+  const tipoComponenteSeleccionado = useMemo(() => {
+    const registro = (progreso || []).find((p: any) => p.idComponente === componenteSeleccionado);
+    return (registro?.tipoComponente || '').toUpperCase();
+  }, [progreso, componenteSeleccionado]);
+
+  const ambientesFiltrados = useMemo(() => {
+    const lista = (ambientes || []).filter((a: any) => a.activo);
+    if (!tipoComponenteSeleccionado) return lista;
+    if (tipoComponenteSeleccionado === 'LABORATORIO') return lista.filter((a: any) => a.tipo === 'LABORATORIO');
+    if (tipoComponenteSeleccionado === 'PRACTICA') return lista.filter((a: any) => a.tipo === 'AULA' || a.tipo === 'LABORATORIO');
+    return lista.filter((a: any) => a.tipo === 'AULA');
+  }, [ambientes, tipoComponenteSeleccionado]);
+
+  const { data: matriz, actualizarMatriz } = useDisponibilidad(ambienteId, idPeriodo);
 
   const { selecciones, seleccionarCelda, deseleccionarCelda } = useSeleccionHorario(docenteId);
 
   const { data: validacion } = useValidacionTiempoReal(docenteId, idPeriodo);
+
+  const { data: gruposDisponibles, isLoading: gruposLoading } = useQuery({
+    queryKey: ['grupos-por-componente', componenteSeleccionado],
+    queryFn: () => gruposService.listarPorComponente(componenteSeleccionado as number).then((res) => res.data),
+    enabled: !!componenteSeleccionado,
+  });
+
+  useEffect(() => {
+    if (!componenteSeleccionado) {
+      setGrupoSeleccionado(null);
+      return;
+    }
+    const primerGrupo = (gruposDisponibles || [])[0];
+    setGrupoSeleccionado(primerGrupo?.id ?? null);
+  }, [componenteSeleccionado, gruposDisponibles]);
 
   // WebSocket para actualizar matriz en tiempo real
   const manejarMensajeWS = useCallback((data: any) => {
@@ -64,18 +89,17 @@ export default function SeleccionHorarioPage() {
   useWebSocket(manejarMensajeWS);
 
   const manejarClickCelda = async (dia: string, hora: string, estado: string) => {
-    if (!cursoSeleccionado || !docenteId) return;
+    if (!componenteSeleccionado || !grupoSeleccionado || !docenteId) return;
 
     if (estado === 'LIBRE') {
-      const ambienteId = tipoSeleccionado === 'TEORIA' ? ambienteTeoriaId : ambienteLabId;
       if (!ambienteId) return;
       const horaFin = `${(parseInt(hora) + 1).toString().padStart(2, '0')}:00`;
       try {
         await seleccionarCelda({
           idDocente: docenteId,
-          idCurso: cursoSeleccionado,
+          idComponente: componenteSeleccionado,
+          idGrupo: grupoSeleccionado,
           idAmbiente: ambienteId,
-          tipoClase: tipoSeleccionado,
           diaSemana: dia,
           horaInicio: hora,
           horaFin,
@@ -88,15 +112,13 @@ export default function SeleccionHorarioPage() {
     }
   };
 
-  const quitarCeldaVistaPrevia = async (dia: string, hora: string) => {
-    const ambienteId = tipoSeleccionado === 'TEORIA' ? ambienteTeoriaId : ambienteLabId;
-    if (!ambienteId) return;
+  const quitarCeldaVistaPrevia = async (seleccion: any) => {
     await deseleccionarCelda({
       idDocente: docenteId,
-      idAmbiente: ambienteId,
-      diaSemana: dia,
-      horaInicio: hora,
-      sesionId,
+      idAmbiente: seleccion.idAmbiente,
+      diaSemana: seleccion.diaSemana,
+      horaInicio: seleccion.horaInicio,
+      sesionId: seleccion.sesionId,
     });
     actualizarMatriz();
   };
@@ -109,40 +131,40 @@ export default function SeleccionHorarioPage() {
       <div className="flex gap-4">
         <div className="flex-1">
           <Selector
-            label="Ambiente para Teoría"
+            label="Ambiente"
             opciones={[
-              { valor: '', etiqueta: 'Seleccionar aula' },
-              ...(ambientes
-                ?.filter((a: any) => a.tipo === 'AULA' && a.activo)
-                .map((a: any) => ({ valor: String(a.id), etiqueta: `${a.codigo} (Cap: ${a.capacidad})` })) ||
-                []),
+              { valor: '', etiqueta: 'Seleccionar ambiente' },
+              ...ambientesFiltrados.map((a: any) => ({
+                valor: String(a.id),
+                etiqueta: `${a.codigo} (${a.tipo === 'AULA' ? 'Aula' : 'Laboratorio'}, Cap: ${a.capacidad})`,
+              })),
             ]}
-            value={ambienteTeoriaId?.toString() || ''}
-            onChange={(e) => setAmbienteTeoriaId(e.target.value ? parseInt(e.target.value) : null)}
+            value={ambienteId?.toString() || ''}
+            onChange={(e) => setAmbienteId(e.target.value ? parseInt(e.target.value) : null)}
           />
         </div>
         <div className="flex-1">
           <Selector
-            label="Ambiente para Laboratorio"
+            label="Grupo"
             opciones={[
-              { valor: '', etiqueta: 'Seleccionar laboratorio' },
-              ...(ambientes
-                ?.filter((a: any) => a.tipo === 'LABORATORIO' && a.activo)
-                .map((a: any) => ({ valor: String(a.id), etiqueta: `${a.codigo} (Cap: ${a.capacidad})` })) ||
-                []),
+              { valor: '', etiqueta: componenteSeleccionado ? 'Seleccionar grupo' : 'Selecciona un componente' },
+              ...((gruposDisponibles || []).map((g: any) => ({
+                valor: String(g.id),
+                etiqueta: `G${g.codigo} (Cap: ${g.capacidad_maxima})`,
+              })) || []),
             ]}
-            value={ambienteLabId?.toString() || ''}
-            onChange={(e) => setAmbienteLabId(e.target.value ? parseInt(e.target.value) : null)}
+            value={grupoSeleccionado?.toString() || ''}
+            onChange={(e) => setGrupoSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
+            disabled={!componenteSeleccionado || gruposLoading}
           />
         </div>
       </div>
 
       {/* Panel de curso */}
       <PanelSeleccionCurso
-        cursos={progreso || []}
-        cursoSeleccionado={cursoSeleccionado}
-        tipoSeleccionado={tipoSeleccionado}
-        alCambiarCurso={setCursoSeleccionado}
+        componentes={progreso || []}
+        componenteSeleccionado={componenteSeleccionado}
+        alCambiarComponente={(id) => setComponenteSeleccionado(id || null)}
       />
 
       {/* Matriz de disponibilidad */}
@@ -165,6 +187,18 @@ export default function SeleccionHorarioPage() {
         <h2 className="font-semibold mb-2">Mi Horario Actual</h2>
         <VistaHorarioDocente selecciones={selecciones} alQuitarCelda={quitarCeldaVistaPrevia} />
       </div>
+
+      {!!docenteId && !!idPeriodo && (
+        <ConfirmacionHorario
+          docenteId={docenteId}
+          idPeriodo={idPeriodo}
+          alConfirmar={() => {
+            queryClient.invalidateQueries({ queryKey: ['selecciones-temporales', docenteId] });
+            queryClient.invalidateQueries({ queryKey: ['horarios-general', idPeriodo] });
+            actualizarMatriz();
+          }}
+        />
+      )}
     </div>
   );
 }

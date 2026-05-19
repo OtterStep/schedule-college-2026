@@ -1,7 +1,7 @@
 interface ProgresoCurso {
-  idCurso: number;
+  idComponente: number;
   nombreCurso: string;
-  tipoClase: string;
+  tipoComponente: string;
   horasRequeridas: number;
   horasAsignadas: number;
 }
@@ -14,10 +14,10 @@ export function IndicadorProgresoHoras({ progreso }: IndicadorProgresoHorasProps
   return (
     <div className="space-y-2">
       {progreso.map((item, idx) => {
-        const porcentaje = Math.round((item.horasAsignadas / item.horasRequeridas) * 100);
+        const porcentaje = item.horasRequeridas > 0 ? Math.round((item.horasAsignadas / item.horasRequeridas) * 100) : 0;
         return (
           <div key={idx} className="flex items-center gap-2">
-            <span className="text-sm w-40 truncate">{item.nombreCurso} ({item.tipoClase})</span>
+            <span className="text-sm w-40 truncate">{item.nombreCurso} ({item.tipoComponente})</span>
             <div className="flex-1 bg-gray-200 rounded h-4">
               <div
                 className="bg-blue-500 h-4 rounded"

@@ -9,8 +9,9 @@ export class AuthService {
    * Verifica credenciales y devuelve datos del usuario
    */
   static async validarCredenciales(credenciales: Credenciales): Promise<DatosUsuario> {
+    const emailNormalizado = credenciales.email.toLowerCase().trim();
     const usuario = await prisma.usuario.findUnique({
-      where: { email: credenciales.email },
+      where: { email: emailNormalizado },
       include: { docente: true },
     });
 

@@ -16,7 +16,13 @@ export default function LoginPage() {
 
   const redirigirSegunRol = () => {
     const rol = useAuthStore.getState().usuario?.rol;
-    router.push(rol === 'PROFESOR' ? '/dashboard/docente' : '/dashboard/admin');
+    if (rol === 'DOCENTE') {
+      router.push('/dashboard/docente');
+    } else if (rol === 'DIRECTOR' || rol === 'ADMINISTRADOR' || rol === 'SECRETARIA') {
+      router.push('/dashboard/admin');
+    } else {
+      router.push('/dashboard');
+    }
   };
 
   useEffect(() => {

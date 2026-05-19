@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -17,7 +17,14 @@ export default function DashboardDocentePage() {
   const router = useRouter();
   const { usuario } = useAuthStore();
 
-  const nombreDocente = usuario?.docente?.nombres || usuario?.nombre || 'Juan Pérez Gómez';
+  // Si el usuario no es docente, redirigir al dashboard administrativo
+  useEffect(() => {
+    if (usuario && usuario.rol !== 'DOCENTE') {
+      router.replace('/dashboard/admin');
+    }
+  }, [usuario, router]);
+
+  const nombreDocente = usuario?.docente?.nombres || usuario?.nombre || 'Docente';
   const apellidoDocente = usuario?.docente?.apellidos || '';
   const categoria = usuario?.docente?.categoria || usuario?.categoria || 'Principal Nombrado';
   const docenteId = usuario?.idDocente || 0;

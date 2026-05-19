@@ -18,47 +18,63 @@ import {
   Eye,
   Send,
   BellRing,
+  MapPin,
 } from 'lucide-react';
 
 export function Sidebar() {
   const pathname = usePathname();
   const { usuario } = useAuthStore();
+  
   const esAdmin = usuario?.rol === 'ADMINISTRADOR';
+  const esDirector = usuario?.rol === 'DIRECTOR';
+  const esSecretaria = usuario?.rol === 'SECRETARIA';
 
   const rutaActiva = (href: string) => {
-    if (href === '/dashboard') {
+    if (href === '/dashboard' || href === '/dashboard/admin') {
       return pathname === href;
     }
-
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
   const enlacesAdmin = [
-    { href: '/dashboard', etiqueta: 'Dashboard', Icono: LayoutDashboard },
-    { href: '/dashboard/periodos', etiqueta: 'Períodos', Icono: Calendar },
-    { href: '/dashboard/docentes', etiqueta: 'Docentes', Icono: Users },
-    { href: '/dashboard/usuarios', etiqueta: 'Usuarios', Icono: Users },
-    { href: '/dashboard/cursos', etiqueta: 'Cursos', Icono: BookOpen },
-    { href: '/dashboard/ambientes', etiqueta: 'Ambientes', Icono: School },
-    { href: '/dashboard/horarios', etiqueta: 'Gestor de Horarios', Icono: Calendar },
-    { href: '/dashboard/horarios/ventanas/configurar', etiqueta: 'Ventanas', Icono: Clock },
-    { href: '/dashboard/horarios/ventanas/monitorear', etiqueta: 'Monitor Ventanas', Icono: Activity },
-    { href: '/dashboard/horarios/vista-docente', etiqueta: 'Horario Docentes', Icono: Eye },
-    { href: '/dashboard/horarios/vista-aula', etiqueta: 'Horario Aulas', Icono: Eye },
+    { href: '/dashboard/admin', etiqueta: 'Panel Admin', Icono: LayoutDashboard },
+    { href: '/dashboard/periodos', etiqueta: 'Períodos Académicos', Icono: Calendar },
+    { href: '/dashboard/usuarios', etiqueta: 'Cuentas de Usuario', Icono: Users },
+    { href: '/dashboard/ambientes', etiqueta: 'Infraestructura/Aulas', Icono: School },
+    { href: '/dashboard/cursos', etiqueta: 'Catálogo de Cursos', Icono: BookOpen },
+    { href: '/dashboard/configuracion/restricciones', etiqueta: 'Reglas del Sistema', Icono: Settings },
+    { href: '/dashboard/configuracion/dias-no-laborables', etiqueta: 'Feriados/No Laborables', Icono: CalendarOff },
+  ];
+
+  const enlacesDirector = [
+    { href: '/dashboard/admin', etiqueta: 'Dashboard Gestión', Icono: LayoutDashboard },
+    { href: '/dashboard/director/docentes', etiqueta: 'Gestión de Docentes', Icono: Users },
+    { href: '/dashboard/director/oferta-academica', etiqueta: 'Oferta Académica', Icono: BookOpen },
+    { href: '/dashboard/director/carga-horaria', etiqueta: 'Asignación de Carga', Icono: Clock },
+    { href: '/dashboard/director/solicitudes-aula', etiqueta: 'Solicitudes de Aula', Icono: MapPin },
+    { href: '/dashboard/horarios', etiqueta: 'Generador Horarios', Icono: Calendar },
     { href: '/dashboard/horarios/publicar', etiqueta: 'Publicar Horarios', Icono: Send },
-    { href: '/dashboard/configuracion/restricciones', etiqueta: 'Restricciones', Icono: Settings },
-    { href: '/dashboard/configuracion/dias-no-laborables', etiqueta: 'Feriados', Icono: CalendarOff },
+  ];
+
+  const enlacesSecretaria = [
+    { href: '/dashboard/admin', etiqueta: 'Panel Secretaría', Icono: LayoutDashboard },
+    { href: '/dashboard/ambientes', etiqueta: 'Gestión de Aulas', Icono: School },
+    { href: '/dashboard/director/solicitudes-aula', etiqueta: 'Asignar Aulas', Icono: MapPin },
+    { href: '/dashboard/horarios/vista-aula', etiqueta: 'Horario por Aulas', Icono: Eye },
   ];
 
   const enlacesDocente = [
-    { href: '/dashboard/docente', etiqueta: 'Dashboard', Icono: LayoutDashboard },
+    { href: '/dashboard/docente', etiqueta: 'Mi Dashboard', Icono: LayoutDashboard },
     { href: '/dashboard/disponibilidad', etiqueta: 'Mi Disponibilidad', Icono: Calendar },
-    { href: '/dashboard/horarios/seleccion', etiqueta: 'Elegir Horario', Icono: CheckSquare },
-    { href: '/dashboard/horarios/vista-docente', etiqueta: 'Mi Horario', Icono: Eye },
-    { href: '/dashboard/notificaciones/preferencias', etiqueta: 'Notificaciones', Icono: BellRing },
+    { href: '/dashboard/horarios/seleccion', etiqueta: 'Elegir mi Horario', Icono: CheckSquare },
+    { href: '/dashboard/horarios/vista-docente', etiqueta: 'Ver mi Horario', Icono: Eye },
+    { href: '/dashboard/notificaciones/preferencias', etiqueta: 'Mis Notificaciones', Icono: BellRing },
   ];
 
-  const enlaces = esAdmin ? enlacesAdmin : enlacesDocente;
+  let enlaces = enlacesDocente;
+  if (esAdmin) enlaces = enlacesAdmin;
+  else if (esDirector) enlaces = enlacesDirector;
+  else if (esSecretaria) enlaces = enlacesSecretaria;
 
   return (
     <aside className="z-20 flex w-64 flex-col bg-unt-primary text-white shadow-xl transition-all duration-300">

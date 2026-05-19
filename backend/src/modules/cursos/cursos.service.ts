@@ -25,16 +25,19 @@ export class CursosService {
     return prisma.curso.findUnique({
       where: { id },
       include: {
-        grupos: true,
-        ambientes: {
+        ofertas: {
           include: {
-            ambiente: true,
+            periodo: true,
+            ciclo: true,
+            componentes: {
+              include: {
+                grupos: true,
+                asignaciones: { include: { docente: true } },
+                bloques: true,
+              },
+            },
           },
-        },
-        docentes: {
-          include: {
-            docente: true,
-          },
+          orderBy: [{ id_periodo: 'desc' }, { id_ciclo: 'asc' }],
         },
       },
     });
@@ -46,18 +49,12 @@ export class CursosService {
   static async crear(datos: {
     nombre: string;
     codigo: string;
-    horas_teoria: number;
-    horas_practica: number;
-    horas_laboratorio: number;
     creditos: number;
   }) {
     return prisma.curso.create({
       data: {
         nombre: datos.nombre,
         codigo: datos.codigo,
-        horas_teoria: datos.horas_teoria,
-        horas_practica: datos.horas_practica,
-        horas_laboratorio: datos.horas_laboratorio,
         creditos: datos.creditos,
       },
     });
@@ -93,6 +90,7 @@ export class CursosService {
   static async buscar(query: string) {
     return prisma.curso.findMany({
       where: {
+        activo: true,
         OR: [
           { nombre: { contains: query, mode: 'insensitive' } },
           { codigo: { contains: query, mode: 'insensitive' } },
@@ -102,75 +100,20 @@ export class CursosService {
     });
   }
 
-  // ─── Gestión de ambientes asignados al curso ───
-
-  /**
-   * Agregar un ambiente al curso para teoría o laboratorio
-   */
-  static async agregarAmbiente(idCurso: number, idAmbiente: number, tipoClase: string) {
-    // Verificar que no exista ya la misma asignación
-    const existente = await prisma.curso_ambiente.findFirst({
-      where: {
-        id_curso: idCurso,
-        id_ambiente: idAmbiente,
-        tipo_clase: tipoClase,
-      },
-    });
-
-    if (existente) {
-      throw new Error('El ambiente ya está asignado a este curso para ese tipo de clase');
-    }
-
-    return prisma.curso_ambiente.create({
-      data: {
-        id_curso: idCurso,
-        id_ambiente: idAmbiente,
-        tipo_clase: tipoClase,
-      },
-    });
-  }
-
-  /**
-   * Quitar un ambiente del curso
-   */
-  static async quitarAmbiente(idCurso: number, idAmbiente: number, tipoClase: string) {
-    return prisma.curso_ambiente.deleteMany({
-      where: {
-        id_curso: idCurso,
-        id_ambiente: idAmbiente,
-        tipo_clase: tipoClase,
-      },
-    });
-  }
-
-  /**
-   * Listar ambientes asignados a un curso
-   */
-  static async listarAmbientes(idCurso: number) {
-    return prisma.curso_ambiente.findMany({
-      where: { id_curso: idCurso },
-      include: { ambiente: true },
-      orderBy: { tipo_clase: 'asc' },
-    });
-  }
-
   /**
    * Importar cursos desde un array (útil para carga masiva)
    */
   static async importar(cursos: Array<{
     nombre: string;
     codigo: string;
-    horas_teoria: number;
-    horas_practica: number;
-    horas_laboratorio: number;
     creditos: number;
   }>) {
     const resultados = [];
     for (const curso of cursos) {
       const creado = await prisma.curso.upsert({
         where: { codigo: curso.codigo },
-        update: curso,
-        create: curso,
+        update: { nombre: curso.nombre, creditos: curso.creditos, activo: true },
+        create: { nombre: curso.nombre, codigo: curso.codigo, creditos: curso.creditos },
       });
       resultados.push(creado);
     }

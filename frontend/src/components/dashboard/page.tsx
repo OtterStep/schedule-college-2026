@@ -15,9 +15,29 @@ import { Boton } from '@/components/ui/Boton';
 import { Selector } from '@/components/ui/Selector';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { useAuthStore } from '@/stores/auth.store';
+import { apiClient } from '@/lib/api-client';
+import { AlertTriangle, MapPin } from 'lucide-react';
+import Link from 'next/link';
 
 export default function DashboardPage() {
   const { usuario } = useAuthStore();
+
+  const { data: solicitudesPendientes } = useQuery({
+    queryKey: ['solicitudes-pendientes-count'],
+    queryFn: () => apiClient.get('/horarios/pendientes-ambiente').then(res => res.data),
+    enabled: usuario?.rol === 'DIRECTOR'
+  });
+
+  const alertaAmbientes = useMemo(() => {
+    if (!solicitudesPendientes) return null;
+    return solicitudesPendientes.length > 5 ? {
+      nivel: 'critico',
+      mensaje: `¡Alerta! Hay ${solicitudesPendientes.length} horarios sin ambiente asignado. Se requiere buscar nuevos ambientes urgentemente.`,
+    } : solicitudesPendientes.length > 0 ? {
+      nivel: 'advertencia',
+      mensaje: `Hay ${solicitudesPendientes.length} solicitudes de aula pendientes de revisión.`,
+    } : null;
+  }, [solicitudesPendientes]);
 
   const { data: periodoActivo, isLoading: periodoLoading } = useQuery({
     queryKey: ['periodo-activo-admin'],
@@ -50,11 +70,32 @@ export default function DashboardPage() {
       ]
     : [];
 
+  const tituloPanel = usuario?.rol === 'DIRECTOR' 
+    ? 'Panel de Dirección de Escuela' 
+    : usuario?.rol === 'SECRETARIA' 
+    ? 'Panel de Secretaría Académica' 
+    : 'Panel Administrativo General';
+
+  const descripcionPanel = usuario?.rol === 'DIRECTOR'
+    ? 'Supervisión de carga horaria, oferta académica y validación de límites legales por docente.'
+    : 'Gestión de infraestructura, asignación de aulas y monitoreo de la programación académica.';
+
   if (periodoLoading || resumenLoading) return <SpinnerCarga />;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
+        {alertaAmbientes && (
+          <div className={`px-6 py-3 flex items-center justify-between ${alertaAmbientes.nivel === 'critico' ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'} border-b border-slate-200`}>
+            <div className="flex items-center gap-3 text-sm font-medium">
+              <AlertTriangle className="h-5 w-5" />
+              <span>{alertaAmbientes.mensaje}</span>
+            </div>
+            <Link href="/dashboard/director/solicitudes-aula" className="text-xs font-bold uppercase tracking-wider hover:underline flex items-center gap-1">
+              Ver solicitudes <MapPin className="h-3 w-3" />
+            </Link>
+          </div>
+        )}
         <div className="relative overflow-hidden bg-gradient-to-br from-[#0b1f3a] via-[#123b6d] to-[#0f4c81] px-6 py-8 text-white sm:px-8">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl pointer-events-none" />
           <div className="absolute left-1/3 bottom-0 h-56 w-56 rounded-full bg-unt-accent/10 blur-3xl pointer-events-none" />
@@ -62,18 +103,18 @@ export default function DashboardPage() {
           <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl space-y-4">
               <div className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80">
-                Panel administrativo
+                {usuario?.rol || 'SISTEMA'}
               </div>
               <div className="space-y-2">
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Dashboard institucional</h1>
+                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{tituloPanel}</h1>
                 <p className="text-sm leading-6 text-white/80 sm:text-base">
-                  Supervisión global de docentes, cursos, ambientes y avance de horarios del período seleccionado.
+                  {descripcionPanel}
                 </p>
               </div>
               <div className="flex flex-wrap gap-3 text-sm">
                 <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2 backdrop-blur-sm">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-white/60">Usuario</p>
-                  <p className="mt-1 font-medium text-white">{usuario?.nombre || usuario?.email || 'Administrador'}</p>
+                  <p className="mt-1 font-medium text-white">{usuario?.rol === 'DIRECTOR' ? 'Director de Escuela' : usuario?.nombre || usuario?.email || 'Administrador'}</p>
                 </div>
                 <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2 backdrop-blur-sm">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-white/60">Rol</p>
