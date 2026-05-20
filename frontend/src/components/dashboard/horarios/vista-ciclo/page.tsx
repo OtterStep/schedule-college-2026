@@ -51,7 +51,7 @@ export default function VistaHorarioCicloPage() {
             <div className="w-64">
               <Selector
                 label="Ciclo Académico"
-                placeholder="Seleccione un ciclo"
+                
                 opciones={ciclos}
                 value={cicloSeleccionado?.toString() || ''}
                 onChange={(e) => setCicloSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
