@@ -10,5 +10,8 @@ router.get('/avance-categoria', EstadisticasController.avanceCategoria);
 router.get('/ocupacion-ambientes', EstadisticasController.ocupacionAmbientes);
 router.get('/mapa-calor', EstadisticasController.mapaCalor);
 router.get('/carga-docente', EstadisticasController.cargaDocente);
+router.get('/avance-cursos', EstadisticasController.avanceCursos);
+router.get('/kpis-secretaria', EstadisticasController.kpisSecretaria);
+router.get('/docente-resumen', EstadisticasController.resumenDocente);
 
 export default router;

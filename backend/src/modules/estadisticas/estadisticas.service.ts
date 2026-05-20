@@ -11,6 +11,9 @@ const duracionHoras = (inicio: string, fin: string) => {
 };
 
 export class EstadisticasService {
+  // ──────────────────────────────────────────
+  // Existing methods
+  // ──────────────────────────────────────────
   static async obtenerResumen(idPeriodo: number) {
     const totalDocentes = await prisma.docente.count({ where: { activo: true } });
     const totalCursos = await prisma.curso.count();
@@ -142,6 +145,8 @@ export class EstadisticasService {
         id: d.id,
         nombres: d.nombres,
         apellidos: d.apellidos,
+        email: d.email,
+        telefono: d.telefono,
         modalidad: d.modalidad,
         categoria: d.categoria,
         horasAsignadas,
@@ -149,5 +154,245 @@ export class EstadisticasService {
         porcentajeCumplimiento: horasRequeridas > 0 ? Math.round((horasAsignadas / horasRequeridas) * 100) : 0,
       };
     });
+  }
+
+  // ──────────────────────────────────────────
+  // New methods (from esteff branch)
+  // ──────────────────────────────────────────
+
+  /**
+   * Avance de cursos: % de horas asignadas vs requeridas por oferta
+   */
+  static async obtenerAvanceCursos(idPeriodo: number) {
+    const ofertas = await prisma.curso_oferta.findMany({
+      where: { id_periodo: idPeriodo },
+      include: {
+        curso: true,
+        componentes: {
+          include: { asignaciones: true },
+        },
+      },
+    });
+
+    return ofertas.map((o) => {
+      const horasRequeridas = o.componentes.reduce((s, c) => s + c.horas_requeridas, 0);
+      const horasAsignadas = o.componentes.reduce(
+        (s, c) => s + c.asignaciones.reduce((s2, a) => s2 + a.horas_asignadas, 0),
+        0
+      );
+      return {
+        idOferta: o.id,
+        curso: o.curso.nombre,
+        codigo: o.curso.codigo,
+        horasRequeridas,
+        horasAsignadas,
+        porcentaje: horasRequeridas > 0 ? Math.round((horasAsignadas / horasRequeridas) * 100) : 0,
+      };
+    });
+  }
+
+  /**
+   * KPIs for secretary/director dashboard
+   */
+  static async obtenerKPIsSecretaria(idPeriodo: number) {
+    const [totalDocentes, docentesConBloques, totalBloques, bloquesConfirmados,
+      totalOfertas, ofertasAsignadas, totalAmbientes, bloquesPeriodo] = await Promise.all([
+      prisma.docente.count({ where: { activo: true } }),
+      prisma.docente.count({
+        where: { activo: true, bloques: { some: { id_periodo: idPeriodo } } },
+      }),
+      prisma.bloque_horario.count({ where: { id_periodo: idPeriodo } }),
+      prisma.bloque_horario.count({
+        where: { id_periodo: idPeriodo, estado: { in: ['CONFIRMADO', 'PUBLICADO'] } },
+      }),
+      prisma.curso_oferta.count({ where: { id_periodo: idPeriodo } }),
+      prisma.curso_oferta.count({
+        where: { id_periodo: idPeriodo, estado: { in: ['ASIGNADO', 'PUBLICADO'] } },
+      }),
+      prisma.ambiente.count({ where: { activo: true } }),
+      prisma.bloque_horario.findMany({
+        where: { id_periodo: idPeriodo },
+        select: { hora_inicio: true, hora_fin: true },
+      }),
+    ]);
+
+    // Calcular ocupacion de ambientes en horas
+    const horasOcupadas = bloquesPeriodo.reduce((sum, b) => sum + duracionHoras(b.hora_inicio, b.hora_fin), 0);
+    // Estimacion de horas disponibles: total ambientes * 13 horas/dia * 5 dias/semana
+    const horasDisponibles = totalAmbientes * 65;
+
+    // Calcular estado de la ventana activa de atencion
+    const ahora = new Date();
+    const anio = ahora.getFullYear();
+    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+    const dia = String(ahora.getDate()).padStart(2, '0');
+    const fechaHoyStr = `${anio}-${mes}-${dia}`;
+    const horaActualMinutos = ahora.getHours() * 60 + ahora.getMinutes();
+
+    const ventanas = await prisma.ventana_atencion.findMany({
+      where: { id_periodo: idPeriodo },
+      orderBy: { fecha: 'asc' },
+    });
+
+    let ventanaActiva = null;
+    for (const v of ventanas) {
+      const vFechaStr = v.fecha.toISOString().split('T')[0];
+      if (vFechaStr === fechaHoyStr) {
+        const [hIni, mIni] = v.hora_inicio.split(':').map(Number);
+        const [hFin, mFin] = v.hora_fin.split(':').map(Number);
+        const iniMin = hIni * 60 + mIni;
+        const finMin = hFin * 60 + mFin;
+        if (horaActualMinutos >= iniMin && horaActualMinutos < finMin) {
+          ventanaActiva = v;
+          break;
+        }
+      }
+    }
+
+    let ventanaInfo = null;
+    if (ventanaActiva) {
+      const [hFin, mFin] = ventanaActiva.hora_fin.split(':').map(Number);
+      const fechaFin = new Date(ventanaActiva.fecha);
+      fechaFin.setHours(hFin, mFin, 0, 0);
+
+      const msRestantes = fechaFin.getTime() - ahora.getTime();
+      const totalMinutosRestantes = Math.max(0, Math.floor(msRestantes / (1000 * 60)));
+      
+      const dias = Math.floor(totalMinutosRestantes / (24 * 60));
+      const horas = Math.floor((totalMinutosRestantes % (24 * 60)) / 60);
+      const minutos = totalMinutosRestantes % 60;
+
+      let semaforo = 'VERDE';
+      if (totalMinutosRestantes < 4 * 60) {
+        semaforo = 'ROJO';
+      } else if (totalMinutosRestantes < 24 * 60) {
+        semaforo = 'AMARILLO';
+      }
+
+      ventanaInfo = {
+        semaforo,
+        tiempoRestante: { dias, horas, minutos },
+      };
+    }
+
+    // Obtener avance de cursos
+    const avanceCursos = await EstadisticasService.obtenerAvanceCursos(idPeriodo);
+
+    return {
+      docentes: {
+        total: totalDocentes,
+        elegidos: docentesConBloques,
+      },
+      cursos: {
+        total: totalOfertas,
+        completos: ofertasAsignadas,
+      },
+      ocupacion: {
+        horasDisponibles,
+        horasOcupadas,
+      },
+      ventana: ventanaInfo,
+      avanceCursos,
+    };
+  }
+
+  /**
+   * Summary for a single teacher in a period
+   */
+  static async obtenerResumenDocente(idDocente: number, idPeriodo: number) {
+    // Fetch docente base info + asignaciones
+    const docente = await prisma.docente.findUnique({
+      where: { id: idDocente },
+      select: {
+        nombres: true,
+        apellidos: true,
+        categoria: true,
+        modalidad: true,
+      },
+    });
+
+    if (!docente) throw new Error(`Docente ${idDocente} no encontrado`);
+
+    // Fetch bloques for this period
+    const bloques = await prisma.bloque_horario.findMany({
+      where: { id_docente: idDocente, id_periodo: idPeriodo },
+      select: { estado: true, hora_inicio: true, hora_fin: true, id_componente: true },
+    });
+
+    // Fetch asignaciones
+    const asignaciones = await prisma.asignacion_docente_componente.findMany({
+      where: { id_docente: idDocente },
+      include: {
+        componente: {
+          include: { oferta: { include: { curso: true } } },
+        },
+      },
+    });
+
+    // Fetch atenciones with ventana in this period
+    const atenciones = await prisma.atencion_docente.findMany({
+      where: {
+        id_docente: idDocente,
+        ventana: { id_periodo: idPeriodo },
+      },
+      include: { ventana: true },
+      orderBy: { ventana: { fecha: 'asc' } },
+    });
+
+    // Total hours
+    const horasRequeridas = asignaciones.reduce((s, a) => s + a.horas_asignadas, 0);
+    const horasAsignadas = bloques.reduce(
+      (s, b) => s + duracionHoras(b.hora_inicio, b.hora_fin),
+      0
+    );
+
+    const bloquesConfirmados = bloques.filter((b) =>
+      ['CONFIRMADO', 'PUBLICADO'].includes(b.estado)
+    ).length;
+    const bloquesBorrador = bloques.filter((b) => b.estado === 'BORRADOR').length;
+
+    // Per-component breakdown
+    const componentes = asignaciones.map((a) => {
+      const bloquesComp = bloques.filter((b) => b.id_componente === a.id_componente);
+      const horasComp = bloquesComp.reduce((s, b) => s + duracionHoras(b.hora_inicio, b.hora_fin), 0);
+      return {
+        idComponente: a.id_componente,
+        nombreCurso: (a.componente as any)?.oferta?.curso?.nombre ?? '',
+        tipoComponente: (a.componente as any)?.tipo ?? '',
+        horasRequeridas: a.horas_asignadas,
+        horasAsignadas: horasComp,
+        porcentaje: a.horas_asignadas > 0 ? Math.round((horasComp / a.horas_asignadas) * 100) : 0,
+      };
+    });
+
+    // Next ventana
+    const ahora = new Date();
+    const proximaAtencion = atenciones.find(
+      (at) => at.ventana && new Date(at.ventana.fecha) >= ahora
+    );
+    const proximaVentana = proximaAtencion?.ventana
+      ? {
+          fecha: proximaAtencion.ventana.fecha,
+          horaInicio: proximaAtencion.ventana.hora_inicio,
+          horaFin: proximaAtencion.ventana.hora_fin,
+          estado: proximaAtencion.estado,
+        }
+      : null;
+
+    return {
+      docente: {
+        nombres: docente.nombres,
+        apellidos: docente.apellidos,
+        categoria: docente.categoria,
+        modalidad: docente.modalidad,
+      },
+      horasRequeridas,
+      horasAsignadas,
+      porcentaje: horasRequeridas > 0 ? Math.round((horasAsignadas / horasRequeridas) * 100) : 0,
+      bloquesConfirmados,
+      bloquesBorrador,
+      componentes,
+      proximaVentana,
+    };
   }
 }

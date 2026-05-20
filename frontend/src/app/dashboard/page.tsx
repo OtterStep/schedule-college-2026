@@ -12,7 +12,7 @@ export default function Dashboard() {
 	useEffect(() => {
 		if (!estaCargando && usuario) {
 			if (usuario.rol === 'SECRETARIA') {
-				router.replace('/dashboard/secretaria/ambientes');
+				router.replace('/dashboard/secretaria');
 			} else if (usuario.rol === 'DOCENTE') {
 				router.replace('/dashboard/docente');
 			} else {

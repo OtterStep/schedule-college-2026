@@ -21,7 +21,7 @@ export default function LoginPage() {
     if (rol === 'DOCENTE') {
       router.push('/dashboard/docente');
     } else if (rol === 'SECRETARIA') {
-      router.push('/dashboard/secretaria/ambientes');
+      router.push('/dashboard/secretaria');
     } else if (rol === 'DIRECTOR' || rol === 'ADMINISTRADOR') {
       router.push('/dashboard/admin');
     } else {

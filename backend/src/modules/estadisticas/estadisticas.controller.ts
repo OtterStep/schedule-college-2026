@@ -56,4 +56,40 @@ export class EstadisticasController {
       res.status(500).json({ error: 'Error al obtener carga docente' });
     }
   }
+
+  static async avanceCursos(req: Request, res: Response) {
+    try {
+      const idPeriodo = parseInt(req.query.idPeriodo as string) || 0;
+      if (!idPeriodo) return res.status(400).json({ error: 'idPeriodo requerido' });
+      const data = await EstadisticasService.obtenerAvanceCursos(idPeriodo);
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: 'Error al obtener avance de cursos' });
+    }
+  }
+
+  static async kpisSecretaria(req: Request, res: Response) {
+    try {
+      const idPeriodo = parseInt(req.query.idPeriodo as string) || 0;
+      if (!idPeriodo) return res.status(400).json({ error: 'idPeriodo requerido' });
+      const data = await EstadisticasService.obtenerKPIsSecretaria(idPeriodo);
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: 'Error al obtener KPIs' });
+    }
+  }
+
+  static async resumenDocente(req: Request, res: Response) {
+    try {
+      const idDocente = parseInt(req.query.idDocente as string) || 0;
+      const idPeriodo = parseInt(req.query.idPeriodo as string) || 0;
+      if (!idDocente || !idPeriodo) {
+        return res.status(400).json({ error: 'idDocente e idPeriodo son requeridos' });
+      }
+      const data = await EstadisticasService.obtenerResumenDocente(idDocente, idPeriodo);
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message ?? 'Error al obtener resumen del docente' });
+    }
+  }
 }

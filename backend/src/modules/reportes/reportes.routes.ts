@@ -5,6 +5,17 @@ import { middlewareAutenticacion } from '@/middleware/autenticacion';
 const router: ExpressRouter = Router();
 router.use(middlewareAutenticacion);
 
+// ---- New direct-download endpoints ----
+router.get('/docente/:idDocente/pdf', ReportesController.pdfDocente);
+router.get('/docente/:idDocente/excel', ReportesController.excelDocente);
+router.get('/global/pdf', ReportesController.pdfGlobal);
+router.get('/global/excel', ReportesController.excelGlobal);
+
+// ---- Email endpoints ----
+router.post('/enviar-correo/docente/:idDocente', ReportesController.enviarCorreoDocente);
+router.post('/enviar-correo/todos', ReportesController.enviarCorreosTodos);
+
+// ---- Legacy queue-based endpoints ----
 router.get('/descargar-excel', ReportesController.descargarExcel);
 router.post('/generar', ReportesController.generar);
 router.get('/estado/:jobId', ReportesController.estadoDescarga);

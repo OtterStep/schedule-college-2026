@@ -86,6 +86,24 @@ export default function SeleccionHorarioPage() {
     enabled: !!docenteId,
   });
 
+  // Pre-seleccionar inteligentemente el primer componente que tenga horas pendientes o el primero
+  useEffect(() => {
+    if (progreso && progreso.length > 0 && componenteSeleccionado === null) {
+      const savedComp = localStorage.getItem('seleccion_componenteSeleccionado');
+      if (savedComp) {
+        const idComp = parseInt(savedComp);
+        if (progreso.some((p: any) => p.idComponente === idComp)) {
+          setComponenteSeleccionado(idComp);
+          return;
+        }
+      }
+      const pendiente = progreso.find((p: any) => p.horasAsignadas < p.horasRequeridas) || progreso[0];
+      if (pendiente) {
+        setComponenteSeleccionado(pendiente.idComponente);
+      }
+    }
+  }, [progreso, componenteSeleccionado]);
+
   const tipoComponenteSeleccionado = useMemo(() => {
     const registro = (progreso || []).find((p: any) => p.idComponente === componenteSeleccionado);
     return (registro?.tipoComponente || '').toUpperCase();
@@ -151,8 +169,18 @@ export default function SeleccionHorarioPage() {
       setGrupoSeleccionado(null);
       return;
     }
-    const primerGrupo = (gruposDisponibles || [])[0];
-    setGrupoSeleccionado(primerGrupo?.id ?? null);
+    if (gruposDisponibles && gruposDisponibles.length > 0) {
+      const savedGrupo = localStorage.getItem('seleccion_grupoSeleccionado');
+      if (savedGrupo) {
+        const idGrupo = parseInt(savedGrupo);
+        if (gruposDisponibles.some((g: any) => g.id === idGrupo)) {
+          setGrupoSeleccionado(idGrupo);
+          return;
+        }
+      }
+      const primerGrupo = gruposDisponibles[0];
+      setGrupoSeleccionado(primerGrupo?.id ?? null);
+    }
   }, [componenteSeleccionado, gruposDisponibles]);
 
   // WebSocket para actualizar matriz en tiempo real

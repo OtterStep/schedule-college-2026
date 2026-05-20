@@ -33,3 +33,6 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# Temporales de reportes
+backend/reportes_test/

@@ -37,7 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (usuario.rol === 'DOCENTE') {
         router.replace('/dashboard/docente');
       } else if (usuario.rol === 'SECRETARIA') {
-        router.replace('/dashboard/secretaria/ambientes');
+        router.replace('/dashboard/secretaria');
       } else {
         router.replace('/dashboard/admin');
       }
@@ -52,7 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // Protección: Secretaria no puede entrar a admin puro o director
     if (usuario.rol === 'SECRETARIA' && (pathname.startsWith('/dashboard/admin') || pathname.startsWith('/dashboard/director'))) {
-      router.replace('/dashboard/secretaria/ambientes');
+      router.replace('/dashboard/secretaria');
       return;
     }
   }, [estaAutenticado, usuario, pathname, router]);

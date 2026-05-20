@@ -41,3 +41,21 @@ export function useCargaDocente(idPeriodo: number) {
     enabled: !!idPeriodo,
   });
 }
+
+export function useKPIsSecretaria(idPeriodo: number) {
+  return useQuery({
+    queryKey: ['estadisticas-kpis-secretaria', idPeriodo],
+    queryFn: () => estadisticasService.kpisSecretaria(idPeriodo).then((res) => res.data),
+    enabled: !!idPeriodo,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useResumenDocente(idDocente: number, idPeriodo: number) {
+  return useQuery({
+    queryKey: ['estadisticas-docente-resumen', idDocente, idPeriodo],
+    queryFn: () => estadisticasService.resumenDocente(idDocente, idPeriodo).then((res) => res.data),
+    enabled: !!idDocente && !!idPeriodo,
+    refetchInterval: 60_000,
+  });
+}

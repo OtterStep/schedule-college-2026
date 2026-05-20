@@ -65,7 +65,7 @@ export default function GenerarReportePage() {
 
   const descargar = () => {
     if (jobId) {
-      reportesService.descargar(jobId).then((res) => {
+      reportesService.descargar(jobId).then((res: any) => {
         const url = window.URL.createObjectURL(new Blob([res.data]));
         const a = document.createElement('a');
         a.href = url;
