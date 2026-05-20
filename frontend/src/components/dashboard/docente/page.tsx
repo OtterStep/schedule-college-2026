@@ -16,6 +16,11 @@ import { useAuthStore } from '@/stores/auth.store';
 export default function DashboardDocentePage() {
   const router = useRouter();
   const { usuario } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     router.prefetch('/dashboard/horarios/seleccion');
@@ -167,15 +172,17 @@ export default function DashboardDocentePage() {
               <CardTitle>Gráfico de horas</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={graficoHoras}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="nombre" tick={{ fontSize: 12, fill: '#6B7280' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#6B7280' }} />
-                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  <Bar dataKey="horas" fill="#003366" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {mounted && (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={graficoHoras}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                    <XAxis dataKey="nombre" tick={{ fontSize: 12, fill: '#6B7280' }} />
+                    <YAxis tick={{ fontSize: 12, fill: '#6B7280' }} />
+                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Bar dataKey="horas" fill="#003366" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 

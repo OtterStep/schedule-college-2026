@@ -31,6 +31,42 @@ export default function SeleccionHorarioPage() {
   const [sesionId] = useState(crypto.randomUUID());
   const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'success' | 'error' } | null>(null);
 
+  // Persistence across navigation transitions
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedAmbiente = localStorage.getItem('seleccion_ambienteId');
+      const savedComp = localStorage.getItem('seleccion_componenteSeleccionado');
+      const savedGrupo = localStorage.getItem('seleccion_grupoSeleccionado');
+      if (savedAmbiente) setAmbienteId(parseInt(savedAmbiente));
+      if (savedComp) setComponenteSeleccionado(parseInt(savedComp));
+      if (savedGrupo) setGrupoSeleccionado(parseInt(savedGrupo));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (ambienteId !== null) {
+      localStorage.setItem('seleccion_ambienteId', ambienteId.toString());
+    } else {
+      localStorage.removeItem('seleccion_ambienteId');
+    }
+  }, [ambienteId]);
+
+  useEffect(() => {
+    if (componenteSeleccionado !== null) {
+      localStorage.setItem('seleccion_componenteSeleccionado', componenteSeleccionado.toString());
+    } else {
+      localStorage.removeItem('seleccion_componenteSeleccionado');
+    }
+  }, [componenteSeleccionado]);
+
+  useEffect(() => {
+    if (grupoSeleccionado !== null) {
+      localStorage.setItem('seleccion_grupoSeleccionado', grupoSeleccionado.toString());
+    } else {
+      localStorage.removeItem('seleccion_grupoSeleccionado');
+    }
+  }, [grupoSeleccionado]);
+
   const { data: periodoActivo } = useQuery({
     queryKey: ['periodo-activo'],
     queryFn: () => periodosService.activo().then((res) => res.data),
