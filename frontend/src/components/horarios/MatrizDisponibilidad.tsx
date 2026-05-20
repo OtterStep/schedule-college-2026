@@ -25,6 +25,7 @@ interface MatrizProps {
     }[];
   } | null;
   alHacerClickCelda: (dia: string, hora: string, estado: string, info?: any) => void;
+  bloqueado?: boolean;
 }
 
 const colores: Record<string, string> = {
@@ -35,7 +36,7 @@ const colores: Record<string, string> = {
   DOCENTE_OTRO_AMBIENTE: 'bg-indigo-50 border-2 border-indigo-200 text-indigo-800 transition-all duration-150 cursor-pointer hover:scale-[1.02] hover:shadow-sm relative shadow-sm opacity-90',
 };
 
-export function MatrizDisponibilidad({ matriz, alHacerClickCelda }: MatrizProps) {
+export function MatrizDisponibilidad({ matriz, alHacerClickCelda, bloqueado = false }: MatrizProps) {
   if (!matriz) {
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-12 text-center shadow-inner">
@@ -79,9 +80,14 @@ export function MatrizDisponibilidad({ matriz, alHacerClickCelda }: MatrizProps)
                       'border-r border-gray-200 px-1 py-1.5 text-center min-w-[130px] min-h-[55px] transition-all',
                       colores[celda.estado]
                     )}
-                    onClick={() => alHacerClickCelda(celda.diaSemana, celda.horaInicio, celda.estado, celda.info)}
+                    onClick={() => {
+                      if (bloqueado && celda.estado === 'LIBRE') return;
+                      alHacerClickCelda(celda.diaSemana, celda.horaInicio, celda.estado, celda.info);
+                    }}
                     title={`${celda.diaSemana} ${celda.horaInicio} - ${
-                      celda.estado === 'DOCENTE_OTRO_AMBIENTE' ? 'Ocupado en otro ambiente' : celda.estado
+                      celda.estado === 'DOCENTE_OTRO_AMBIENTE' ? 'Ocupado en otro ambiente' :
+                      (bloqueado && celda.estado === 'LIBRE') ? 'Fuera de tu ventana de atención' :
+                      celda.estado
                     }`}
                   >
                     <div className="flex items-center justify-center min-h-[36px] transition-all duration-150">

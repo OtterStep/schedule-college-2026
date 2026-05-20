@@ -11,6 +11,7 @@ export const ventanasService = {
   desactivar: (idPeriodo: number) => apiClient.post('/ventanas/desactivar', { idPeriodo }),
   listar: (periodo?: number) => apiClient.get('/ventanas', { params: { periodo } }),
   obtenerActiva: (periodo?: number) => apiClient.get('/ventanas/activa', { params: { periodo } }),
+  miTurno: (idPeriodo: number) => apiClient.get('/ventanas/mi-turno', { params: { idPeriodo } }),
   obtener: (id: number) => apiClient.get(`/ventanas/${id}`),
   iniciar: (id: number) => apiClient.post(`/ventanas/${id}/iniciar`),
   obtenerCola: (id: number) => apiClient.get(`/ventanas/${id}/cola`),

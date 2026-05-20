@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { HorariosService } from './horarios.service';
+import { VentanasService } from '../ventanas/ventanas.service';
 import {
   seleccionarCeldaSchema,
   deseleccionarCeldaSchema,
@@ -22,6 +23,20 @@ export class HorariosController {
 
     if (usuario.rol === 'DOCENTE' && usuario.idDocente !== idDocente) {
       throw new Error('No autorizado para gestionar horarios de otro docente');
+    }
+  }
+
+  private static async validarVentanaDocente(idDocente: number, idPeriodo: number) {
+    const turno = await VentanasService.obtenerTurnoDocente(idDocente, idPeriodo);
+    if (!turno.acceso) {
+      const mensajes: Record<string, string> = {
+        AUN_NO_ES_SU_TURNO: `Tu ventana de atención aún no ha comenzado. Inicia en: ${(turno as any).turnoAsignado?.fecha} ${(turno as any).turnoAsignado?.horaInicio}`,
+        TURNO_VENCIDO: 'Tu ventana de atención ya venció. Consulta con la secretaría.',
+        SIN_ASIGNACION: 'No tienes una ventana de atención asignada para este periodo.',
+        CANCELADO: 'Tu ventana de atención fue cancelada.',
+      };
+      const razon = (turno as any).razon as string;
+      throw new Error(mensajes[razon] || 'No tienes acceso en este momento.');
     }
   }
 
@@ -51,12 +66,18 @@ export class HorariosController {
         idComponente: number;
         idGrupo: number;
         idAmbiente: number;
+        idPeriodo?: number;
         diaSemana: string;
         horaInicio: string;
         horaFin: string;
         sesionId: string;
       };
       HorariosController.validarAccesoDocente(req, datos.idDocente);
+      // Guard Variante B: verificar ventana de tiempo activa
+      const usuario = (req as any).usuario;
+      if (usuario?.rol === 'DOCENTE' && datos.idPeriodo) {
+        await HorariosController.validarVentanaDocente(datos.idDocente, datos.idPeriodo);
+      }
       const resultado = await HorariosService.seleccionarCelda(datos);
       res.status(201).json(resultado);
     } catch (error: any) {
@@ -146,8 +167,13 @@ export class HorariosController {
     try {
         const datos = confirmarSeleccionSchema.parse(req.body);
       HorariosController.validarAccesoDocente(req, datos.idDocente);
-        const horarios = await PublicadorHorarios.confirmarSeleccion(datos.idDocente, datos.idPeriodo);
-        res.status(201).json({ mensaje: 'Selección confirmada', horarios });
+      // Guard Variante B: verificar ventana de tiempo activa
+      const usuario2 = (req as any).usuario;
+      if (usuario2?.rol === 'DOCENTE') {
+        await HorariosController.validarVentanaDocente(datos.idDocente, datos.idPeriodo);
+      }
+      const horarios = await PublicadorHorarios.confirmarSeleccion(datos.idDocente, datos.idPeriodo);
+      res.status(201).json({ mensaje: 'Selección confirmada', horarios });
     } catch (error: any) {
         if (error.name === 'ZodError') {
         res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });

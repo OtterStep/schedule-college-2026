@@ -344,4 +344,88 @@ export class VentanasService {
       data: { estado: 'COMPLETADO' },
     });
   }
+
+  /**
+   * Variante B: verifica si el docente tiene acceso en base a fecha/hora actual.
+   * Retorna:
+   *   { acceso: true, ventana, atencion }  → puede seleccionar celdas
+   *   { acceso: false, razon, proximaVentana? } → no puede seleccionar celdas
+   */
+  static async obtenerTurnoDocente(idDocente: number, idPeriodo: number) {
+    // ¿Existe alguna ventana configurada para este periodo?
+    const totalVentanas = await prisma.ventana_atencion.count({
+      where: { id_periodo: idPeriodo, estado: { not: 'CANCELADO' } },
+    });
+
+    if (totalVentanas === 0) {
+      // Sin ventanas configuradas → acceso libre
+      return { acceso: true, razon: 'SIN_RESTRICCION' };
+    }
+
+    // Buscar la atención asignada a este docente en este periodo
+    const atencionDocente = await prisma.atencion_docente.findFirst({
+      where: {
+        id_docente: idDocente,
+        ventana: { id_periodo: idPeriodo, estado: { not: 'CANCELADO' } },
+      },
+      include: {
+        ventana: true,
+      },
+      orderBy: { ventana: { fecha: 'asc' } },
+    });
+
+    if (!atencionDocente) {
+      return { acceso: false, razon: 'SIN_ASIGNACION' };
+    }
+
+    if (atencionDocente.estado === 'CANCELADO') {
+      return { acceso: false, razon: 'CANCELADO' };
+    }
+
+    // Comparar fecha y hora actual con la ventana asignada
+    const ahora = new Date();
+    const ventana = atencionDocente.ventana;
+
+    // Construir fecha+hora de inicio y fin en zona horaria local del servidor
+    const fechaStr = ventana.fecha.toISOString().slice(0, 10); // YYYY-MM-DD
+    const fechaHoraInicio = new Date(`${fechaStr}T${ventana.hora_inicio}:00`);
+    const fechaHoraFin = new Date(`${fechaStr}T${ventana.hora_fin}:00`);
+
+    if (ahora < fechaHoraInicio) {
+      return {
+        acceso: false,
+        razon: 'AUN_NO_ES_SU_TURNO',
+        turnoAsignado: {
+          fecha: fechaStr,
+          horaInicio: ventana.hora_inicio,
+          horaFin: ventana.hora_fin,
+          orden: ventana.orden,
+        },
+      };
+    }
+
+    if (ahora > fechaHoraFin) {
+      return {
+        acceso: false,
+        razon: 'TURNO_VENCIDO',
+        turnoAsignado: {
+          fecha: fechaStr,
+          horaInicio: ventana.hora_inicio,
+          horaFin: ventana.hora_fin,
+        },
+      };
+    }
+
+    // El docente está dentro de su ventana de tiempo → acceso permitido
+    return {
+      acceso: true,
+      razon: 'EN_TURNO',
+      turnoAsignado: {
+        fecha: fechaStr,
+        horaInicio: ventana.hora_inicio,
+        horaFin: ventana.hora_fin,
+        orden: ventana.orden,
+      },
+    };
+  }
 }

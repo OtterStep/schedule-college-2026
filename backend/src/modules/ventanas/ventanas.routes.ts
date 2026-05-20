@@ -12,6 +12,7 @@ router.post('/actualizar-horario', VentanasController.actualizarHorario);
 router.post('/desactivar', VentanasController.desactivar);
 router.get('/', VentanasController.listar);
 router.get('/activa', VentanasController.obtenerActiva);
+router.get('/mi-turno', VentanasController.miTurno);
 router.get('/:id', VentanasController.obtener);
 router.post('/:id/iniciar', VentanasController.iniciar);
 router.get('/:id/cola', VentanasController.obtenerCola);

@@ -97,6 +97,25 @@ export class VentanasController {
     res.json(ventana || null);
   }
 
+  static async miTurno(req: Request, res: Response) {
+    try {
+      const usuario = (req as any).usuario;
+      const idDocente = usuario?.idDocente;
+      if (!idDocente) {
+        // No es docente → acceso libre (admin/secretaria)
+        return res.json({ acceso: true, razon: 'NO_ES_DOCENTE' });
+      }
+      const idPeriodo = req.query.idPeriodo ? parseInt(req.query.idPeriodo as string) : 0;
+      if (!idPeriodo) {
+        return res.status(400).json({ error: 'idPeriodo requerido' });
+      }
+      const resultado = await VentanasService.obtenerTurnoDocente(idDocente, idPeriodo);
+      res.json(resultado);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
   static async obtener(req: Request, res: Response) {
     const id = parseInt(req.params.id);
     const ventana = await VentanasService.obtenerPorId(id);

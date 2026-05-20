@@ -19,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { gruposService } from '@/services/grupos.service';
 import { ConfirmacionHorario } from '@/components/horarios/ConfirmacionHorario';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
+import { ventanasService } from '@/services/ventanas.service';
 
 export default function SeleccionHorarioPage() {
   const { usuario } = useAuthStore();
@@ -131,6 +132,20 @@ export default function SeleccionHorarioPage() {
     enabled: !!componenteSeleccionado,
   });
 
+  // --- Ventana de atención (Variante B: control por tiempo) ---
+  const { data: turnoData } = useQuery({
+    queryKey: ['mi-turno', docenteId, idPeriodo],
+    queryFn: () => ventanasService.miTurno(idPeriodo).then((res) => res.data),
+    enabled: !!docenteId && !!idPeriodo,
+    refetchInterval: 60_000, // re-check every minute
+  });
+
+  const esBloqueado = useMemo(() => {
+    if (!turnoData) return false;
+    if (turnoData.acceso) return false;
+    return true;
+  }, [turnoData]);
+
   useEffect(() => {
     if (!componenteSeleccionado) {
       setGrupoSeleccionado(null);
@@ -189,6 +204,7 @@ export default function SeleccionHorarioPage() {
           idComponente: componenteSeleccionado,
           idGrupo: grupoSeleccionado,
           idAmbiente: ambienteId,
+          idPeriodo: idPeriodo || undefined,
           diaSemana: dia,
           horaInicio: hora,
           horaFin,
@@ -246,6 +262,60 @@ export default function SeleccionHorarioPage() {
           </div>
         )}
       </div>
+
+      {/* Turn status banner */}
+      {!!docenteId && !!idPeriodo && turnoData && (
+        <div
+          className={[
+            'rounded-2xl border px-5 py-4 flex items-center gap-4 shadow-sm transition-all duration-300',
+            turnoData.acceso === true
+              ? turnoData.razon === 'SIN_RESTRICCION' || turnoData.razon === 'NO_ES_DOCENTE'
+                ? 'bg-slate-50 border-slate-200 text-slate-700'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : turnoData.razon === 'AUN_NO_ES_SU_TURNO'
+              ? 'bg-amber-50 border-amber-200 text-amber-800'
+              : 'bg-rose-50 border-rose-200 text-rose-800',
+          ].join(' ')}
+        >
+          <span className={[
+            'flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full text-xl',
+            turnoData.acceso
+              ? turnoData.razon === 'SIN_RESTRICCION' ? 'bg-slate-200' : 'bg-emerald-100'
+              : turnoData.razon === 'AUN_NO_ES_SU_TURNO' ? 'bg-amber-100' : 'bg-rose-100',
+          ].join(' ')}>
+            {turnoData.acceso
+              ? turnoData.razon === 'SIN_RESTRICCION' ? '✓' : '🟢'
+              : turnoData.razon === 'AUN_NO_ES_SU_TURNO' ? '⏰' : '🔴'}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm">
+              {turnoData.acceso
+                ? turnoData.razon === 'SIN_RESTRICCION'
+                  ? 'Sin restricción de turno activa'
+                  : '¡Es tu ventana de atención!'
+                : turnoData.razon === 'AUN_NO_ES_SU_TURNO'
+                ? 'Tu turno aún no ha comenzado'
+                : turnoData.razon === 'TURNO_VENCIDO'
+                ? 'Tu ventana de atención venció'
+                : 'No tienes ventana de atención asignada'}
+            </p>
+            <p className="text-xs mt-0.5 opacity-80">
+              {turnoData.acceso
+                ? turnoData.razon === 'EN_TURNO'
+                  ? `Acceso activo hasta las ${turnoData.turnoAsignado?.horaFin}`
+                  : 'Las ventanas de tiempo no están configuradas para este periodo'
+                : turnoData.turnoAsignado
+                ? `Tu ventana: ${turnoData.turnoAsignado.fecha} de ${turnoData.turnoAsignado.horaInicio} a ${turnoData.turnoAsignado.horaFin}`
+                : 'Consulta con la secretaría para conocer tu turno'}
+            </p>
+          </div>
+          {esBloqueado && (
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-rose-200 text-rose-800 border border-rose-300 flex-shrink-0">
+              Selección bloqueada
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -338,7 +408,7 @@ export default function SeleccionHorarioPage() {
                 </span>
               )}
             </div>
-            <MatrizDisponibilidad matriz={matriz || null} alHacerClickCelda={manejarClickCelda} />
+            <MatrizDisponibilidad matriz={matriz || null} alHacerClickCelda={manejarClickCelda} bloqueado={esBloqueado} />
           </div>
 
           {/* Confirmation Box */}

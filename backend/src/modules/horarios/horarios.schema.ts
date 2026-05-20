@@ -5,6 +5,7 @@ export const seleccionarCeldaSchema = z.object({
   idComponente: z.number().int().positive(),
   idGrupo: z.number().int().positive(),
   idAmbiente: z.number().int().positive().optional(),
+  idPeriodo: z.number().int().positive().optional(),
   modoPrueba: z.boolean().optional(),
   diaSemana: z.enum(['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES']),
   horaInicio: z.string().regex(/^\d{2}:\d{2}$/),
