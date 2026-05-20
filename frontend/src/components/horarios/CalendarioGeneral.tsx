@@ -248,27 +248,56 @@ export function CalendarioGeneral({ idPeriodo, filtroTipo, filtroId, ambienteAsi
                       `}
                     >
                       <div className={`flex flex-col gap-1 min-h-[60px] p-1 ${isShaking ? 'animate-shake' : ''}`}>
-                        {clasesEnCelda.map((clase: any, idx: number) => (
-                          <div
-                            key={idx}
-                            draggable={modo === 'EDICION'}
-                            onDragStart={(e) => modo === 'EDICION' && handleDragStart(e, clase, true)}
-                            className={`p-2 rounded-lg text-xs border shadow-sm transition-all
-                              ${modo === 'EDICION' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}
-                              ${clase.estado === 'PUBLICADO' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
-                                clase.estado === 'CONFIRMADO' ? 'bg-blue-50 border-blue-200 text-blue-800' :
-                                'bg-amber-50 border-amber-200 text-amber-800'}
-                            `}
-                          >
-                            <div className="font-bold truncate">{clase.curso?.nombre || 'Curso'}</div>
-                            <div className="flex justify-between items-center mt-1 text-[10px] opacity-80">
-                              <span>{clase.docente?.apellidos || 'Docente'}</span>
-                              <span className="font-mono bg-white/50 px-1 rounded">
-                                {filtroTipo === 'AULA' ? (clase.grupo?.codigo_grupo || 'G') : (clase.ambiente?.codigo || 'A')}
-                              </span>
+                        {clasesEnCelda.map((clase: any, idx: number) => {
+                          const cursoNombre =
+                            clase.componente?.oferta?.curso?.nombre ||
+                            clase.grupo?.componente?.oferta?.curso?.nombre ||
+                            clase.curso?.nombre ||
+                            'Curso';
+                          const tipoComponente =
+                            clase.componente?.tipo ||
+                            clase.grupo?.componente?.tipo ||
+                            '';
+                          const grupoCodigo =
+                            clase.grupo?.codigo ||
+                            clase.grupo?.codigo_grupo ||
+                            'G';
+
+                          return (
+                            <div
+                              key={idx}
+                              draggable={modo === 'EDICION'}
+                              onDragStart={(e) => modo === 'EDICION' && handleDragStart(e, clase, true)}
+                              className={`p-2.5 rounded-xl text-xs border shadow-sm transition-all hover:shadow-md flex flex-col justify-between min-h-[55px]
+                                ${modo === 'EDICION' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}
+                                ${clase.estado === 'PUBLICADO' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                                  clase.estado === 'CONFIRMADO' ? 'bg-blue-50/80 border-blue-200 text-blue-800' :
+                                  'bg-amber-50 border-amber-200 text-amber-800'}
+                              `}
+                            >
+                              <div className="font-bold text-[10.5px] leading-tight text-slate-800 break-words" title={cursoNombre}>
+                                {cursoNombre}
+                              </div>
+                              <div className="text-[8.5px] font-semibold text-slate-500 mt-1 leading-none">
+                                {tipoComponente} {tipoComponente && '•'} Gr. {grupoCodigo}
+                              </div>
+                              <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-black/5 text-[9px] opacity-80 font-medium">
+                                {filtroTipo === 'AULA' ? (
+                                  <span className="truncate max-w-[110px] text-slate-600">
+                                    {clase.docente ? `${clase.docente.nombres?.[0] || ''}. ${clase.docente.apellidos}` : 'Docente'}
+                                  </span>
+                                ) : (
+                                  <span className="font-semibold bg-white/60 px-1.5 py-0.5 rounded border border-black/5 text-[8.5px] text-slate-700">
+                                    Aula: {clase.ambiente?.codigo || 'Pendiente'}
+                                  </span>
+                                )}
+                                <span className="font-bold uppercase text-[7px] px-1 rounded bg-black/5 leading-normal text-slate-700">
+                                  {clase.estado}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
 
                         {modo === 'EDICION' && clasesEnCelda.length === 0 && !isAlmuerzo && (
                           <div className={`w-full h-full min-h-[40px] border-2 border-transparent border-dashed rounded-lg transition-colors flex items-center justify-center
