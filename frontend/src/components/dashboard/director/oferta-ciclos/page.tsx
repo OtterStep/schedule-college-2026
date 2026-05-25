@@ -58,7 +58,6 @@ export default function OfertaPorCiclosPage() {
             <div className="w-64">
               <Selector
                 label="Ciclo Académico"
-                placeholder="Seleccione un ciclo"
                 opciones={ciclos}
                 value={cicloSeleccionado?.toString() || ''}
                 onChange={(e) => setCicloSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
@@ -111,9 +110,8 @@ export default function OfertaPorCiclosPage() {
                   {curso.componentes && curso.componentes.map((comp: any) => (
                     <div key={comp.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-white hover:border-unt-primary/30 transition-all group/comp">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-xl ${
-                          comp.tipo === 'TEORIA' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
-                        }`}>
+                        <div className={`p-2 rounded-xl ${comp.tipo === 'TEORIA' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+                          }`}>
                           <Clock className="w-3.5 h-3.5" />
                         </div>
                         <div>
@@ -123,7 +121,7 @@ export default function OfertaPorCiclosPage() {
                           <p className="text-[10px] text-slate-500 font-medium">{comp.horas_semanales} horas/semana</p>
                         </div>
                       </div>
-                      
+
                       <div className="flex flex-col items-end">
                         <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-100">
                           <Users className="w-3 h-3" />
