@@ -11,7 +11,7 @@ export interface PreferenciasNotificacion {
 export interface NotificacionEnvio {
   idDocente: number;
   canal: 'CORREO' | 'WHATSAPP' | 'TELEGRAM';
-  tipoMensaje: 'RECORDATORIO_24H' | 'ALERTA_15MIN' | 'PERSONALIZADO';
+  tipoMensaje: 'RECORDATORIO_24H' | 'ALERTA_15MIN' | 'NUEVO_TURNO' | 'PERSONALIZADO';
   contenido: string;
 }
 

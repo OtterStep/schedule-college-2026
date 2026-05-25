@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { GestorNotificaciones } from '../notificaciones/gestor-notificaciones.service';
+import { GestorPlantillas } from '../notificaciones/gestor-plantillas.service';
 
 export class VentanasService {
   private static getLimaParts(date: Date) {
@@ -219,12 +221,63 @@ export class VentanasService {
             orden_espera: 1,
           },
         });
-        creadas.push(ventana);
+        creadas.push({ ventana, docente });
       }
       return creadas;
     });
 
-    return { totalDocentes: docentesOrdenados.length, totalSlots: slots.length, ventanas };
+    // Enviar correos de notificación de forma asíncrona
+    ventanas.forEach(async ({ ventana, docente }) => {
+      const contenido = GestorPlantillas.plantillaTurnoAsignado(
+        docente,
+        { fecha: ventana.fecha, horaInicio: ventana.hora_inicio, horaFin: ventana.hora_fin }
+      );
+      await GestorNotificaciones.enviar({
+        idDocente: docente.id,
+        canal: 'CORREO',
+        tipoMensaje: 'NUEVO_TURNO',
+        contenido
+      });
+    });
+
+    return { totalDocentes: docentesOrdenados.length, totalSlots: slots.length, ventanas: ventanas.map(v => v.ventana) };
+  }
+
+  static async notificarTurno(idVentana: number, idDocente: number) {
+    const atencion = await prisma.atencion_docente.findUnique({
+      where: {
+        id_ventana_id_docente: {
+          id_ventana: idVentana,
+          id_docente: idDocente
+        }
+      },
+      include: {
+        ventana: true,
+        docente: true
+      }
+    });
+
+    if (!atencion) {
+      throw new Error('Turno no encontrado');
+    }
+
+    const contenido = GestorPlantillas.plantillaTurnoAsignado(
+      atencion.docente,
+      { fecha: atencion.ventana.fecha, horaInicio: atencion.ventana.hora_inicio, horaFin: atencion.ventana.hora_fin }
+    );
+
+    const exito = await GestorNotificaciones.enviar({
+      idDocente: idDocente,
+      canal: 'CORREO',
+      tipoMensaje: 'NUEVO_TURNO',
+      contenido
+    });
+
+    if (!exito) {
+      throw new Error('No se pudo enviar el correo o el docente no tiene el correo habilitado.');
+    }
+
+    return { mensaje: 'Notificación enviada correctamente' };
   }
 
   static async desactivarVentanas(idPeriodo: number) {

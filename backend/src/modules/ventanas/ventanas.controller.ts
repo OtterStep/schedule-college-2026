@@ -117,6 +117,19 @@ export class VentanasController {
     }
   }
 
+  static async notificarTurno(req: Request, res: Response) {
+    try {
+      const { idVentana, idDocente } = req.body;
+      if (!idVentana || !idDocente) {
+        return res.status(400).json({ error: 'idVentana y idDocente son requeridos' });
+      }
+      const resultado = await VentanasService.notificarTurno(Number(idVentana), Number(idDocente));
+      res.json(resultado);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   static async desactivarTurno(req: Request, res: Response) {
     try {
       const datos = desactivarTurnoSchema.parse(req.body);

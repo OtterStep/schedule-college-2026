@@ -11,7 +11,7 @@ import { SpinnerCarga } from '@/components/ui/SpinnerCarga';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
 import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/utilidades';
-import { Edit2, Check, Clock, Calendar as CalendarIcon, X, AlertCircle, Trash2 } from 'lucide-react';
+import { Edit2, Check, Clock, Calendar as CalendarIcon, X, AlertCircle, Trash2, Mail } from 'lucide-react';
 
 const formatearFecha = (fecha?: string | Date) => {
   if (!fecha) return '';
@@ -72,6 +72,9 @@ export default function VentanasSecretariaPage() {
     horaInicio: '',
     horaFin: '',
   });
+  const [filtroModalidad, setFiltroModalidad] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+  const [filtroEstadoTiempo, setFiltroEstadoTiempo] = useState('');
 
   const { data: periodos, isLoading: periodosLoading } = useQuery({
     queryKey: ['periodos-ventanas'],
@@ -145,6 +148,16 @@ export default function VentanasSecretariaPage() {
       setToast({ mensaje: error.response?.data?.error || 'Error al desactivar turno', tipo: 'error' }),
   });
 
+  const notificarTurnoMutation = useMutation({
+    mutationFn: (datos: { idVentana: number; idDocente: number }) =>
+      ventanasService.notificarTurno(datos),
+    onSuccess: () => {
+      setToast({ mensaje: 'Correo de notificación enviado correctamente', tipo: 'exito' });
+    },
+    onError: (error: any) =>
+      setToast({ mensaje: error.response?.data?.error || 'Error al enviar notificación', tipo: 'error' }),
+  });
+
   // Flatten ventanas → filas de docente con estado de tiempo real calculado
   const filas = useMemo(() => {
     const now = new Date();
@@ -195,6 +208,15 @@ export default function VentanasSecretariaPage() {
       return (ordCat[a.categoria] ?? 9) - (ordCat[b.categoria] ?? 9);
     });
   }, [ventanas]);
+
+  const filasFiltradas = useMemo(() => {
+    return filas.filter((fila) => {
+      if (filtroModalidad && fila.modalidad !== filtroModalidad) return false;
+      if (filtroCategoria && fila.categoria !== filtroCategoria) return false;
+      if (filtroEstadoTiempo && fila.razonTiempo !== filtroEstadoTiempo) return false;
+      return true;
+    });
+  }, [filas, filtroModalidad, filtroCategoria, filtroEstadoTiempo]);
 
   const totalVentanas = ventanas?.length ?? 0;
   const totalDocentes = filas.length;
@@ -351,12 +373,50 @@ export default function VentanasSecretariaPage() {
 
       {/* Tabla de turnos */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="font-bold text-slate-800 flex items-center gap-2">
             <span className="w-1.5 h-5 rounded-full bg-emerald-500 inline-block" />
             Turnos de docentes
             <span className="ml-1 text-xs text-slate-400 font-normal">ordenado por modalidad → categoría → antigüedad</span>
           </h2>
+          <div className="flex gap-3">
+            <Selector
+              label=""
+              opciones={[
+                { valor: '', etiqueta: 'Todas las modalidades' },
+                { valor: 'NOMBRADO', etiqueta: 'NOMBRADO' },
+                { valor: 'CONTRATADO', etiqueta: 'CONTRATADO' },
+              ]}
+              value={filtroModalidad}
+              onChange={(e) => setFiltroModalidad(e.target.value)}
+              className="py-1.5 text-xs w-40"
+            />
+            <Selector
+              label=""
+              opciones={[
+                { valor: '', etiqueta: 'Todas las categorías' },
+                { valor: 'PRINCIPAL', etiqueta: 'PRINCIPAL' },
+                { valor: 'ASOCIADO', etiqueta: 'ASOCIADO' },
+                { valor: 'AUXILIAR', etiqueta: 'AUXILIAR' },
+                { valor: 'JEFE_PRACTICA', etiqueta: 'JEFE_PRACTICA' },
+              ]}
+              value={filtroCategoria}
+              onChange={(e) => setFiltroCategoria(e.target.value)}
+              className="py-1.5 text-xs w-40"
+            />
+            <Selector
+              label=""
+              opciones={[
+                { valor: '', etiqueta: 'Todos los estados' },
+                { valor: 'EN_TURNO', etiqueta: 'En turno ahora' },
+                { valor: 'AUN_NO_ES_SU_TURNO', etiqueta: 'Aún no es su turno' },
+                { valor: 'TURNO_VENCIDO', etiqueta: 'Turno vencido' },
+              ]}
+              value={filtroEstadoTiempo}
+              onChange={(e) => setFiltroEstadoTiempo(e.target.value)}
+              className="py-1.5 text-xs w-40"
+            />
+          </div>
         </div>
 
         {ventanasLoading ? (
@@ -387,7 +447,7 @@ export default function VentanasSecretariaPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filas.map((fila) => (
+                {filasFiltradas.map((fila) => (
                   <tr key={fila.id} className={cn(
                     'transition-colors',
                     fila.razonTiempo === 'EN_TURNO' ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'hover:bg-slate-50/60'
@@ -435,6 +495,21 @@ export default function VentanasSecretariaPage() {
                           title="Editar turno"
                         >
                           <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`¿Reenviar correo de notificación a ${fila.docente}?`)) {
+                              notificarTurnoMutation.mutate({
+                                idVentana: fila.idVentana,
+                                idDocente: fila.idDocente,
+                              });
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Reenviar correo de notificación"
+                          disabled={notificarTurnoMutation.isPending}
+                        >
+                          <Mail className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => {

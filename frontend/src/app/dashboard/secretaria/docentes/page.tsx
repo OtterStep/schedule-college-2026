@@ -10,6 +10,8 @@ import { SpinnerCarga } from '@/components/ui/SpinnerCarga';
 
 export default function DocentesSecretariaPage() {
   const [idPeriodo, setIdPeriodo] = useState<number | null>(null);
+  const [filtroModalidad, setFiltroModalidad] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
 
   const { data: periodos, isLoading: periodosLoading } = useQuery({
     queryKey: ['periodos-secretaria-docentes'],
@@ -53,6 +55,14 @@ export default function DocentesSecretariaPage() {
     });
   }, [cargaResumen]);
 
+  const rowsFiltrados = useMemo(() => {
+    return cargaRows.filter((row) => {
+      if (filtroModalidad && row.modalidad !== filtroModalidad) return false;
+      if (filtroCategoria && row.categoria !== filtroCategoria) return false;
+      return true;
+    });
+  }, [cargaRows, filtroModalidad, filtroCategoria]);
+
   if (periodosLoading) return <SpinnerCarga />;
 
   return (
@@ -75,6 +85,35 @@ export default function DocentesSecretariaPage() {
         </div>
       </div>
 
+      <div className="flex gap-4 mb-4">
+        <div className="w-48">
+          <Selector
+            label="Modalidad"
+            opciones={[
+              { valor: '', etiqueta: 'Todas' },
+              { valor: 'NOMBRADO', etiqueta: 'NOMBRADO' },
+              { valor: 'CONTRATADO', etiqueta: 'CONTRATADO' },
+            ]}
+            value={filtroModalidad}
+            onChange={(e) => setFiltroModalidad(e.target.value)}
+          />
+        </div>
+        <div className="w-48">
+          <Selector
+            label="Categoría"
+            opciones={[
+              { valor: '', etiqueta: 'Todas' },
+              { valor: 'PRINCIPAL', etiqueta: 'PRINCIPAL' },
+              { valor: 'ASOCIADO', etiqueta: 'ASOCIADO' },
+              { valor: 'AUXILIAR', etiqueta: 'AUXILIAR' },
+              { valor: 'JEFE_PRACTICA', etiqueta: 'JEFE_PRACTICA' },
+            ]}
+            value={filtroCategoria}
+            onChange={(e) => setFiltroCategoria(e.target.value)}
+          />
+        </div>
+      </div>
+
       {cargaLoading ? (
         <SpinnerCarga />
       ) : (
@@ -86,7 +125,7 @@ export default function DocentesSecretariaPage() {
             { clave: 'horasMaximas', titulo: 'Horas maximas' },
             { clave: 'horasAsignadas', titulo: 'Horas asignadas' },
           ]}
-          datos={cargaRows}
+          datos={rowsFiltrados}
         />
       )}
     </div>

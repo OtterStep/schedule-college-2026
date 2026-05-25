@@ -10,6 +10,7 @@ import { SpinnerCarga } from '@/components/ui/SpinnerCarga';
 
 export default function AmbientesSecretariaPage() {
   const [idPeriodo, setIdPeriodo] = useState<number | null>(null);
+  const [filtroTipo, setFiltroTipo] = useState('');
 
   const { data: periodos, isLoading: periodosLoading } = useQuery({
     queryKey: ['periodos-secretaria-ambientes'],
@@ -46,6 +47,13 @@ export default function AmbientesSecretariaPage() {
     }));
   }, [ambientes]);
 
+  const rowsFiltrados = useMemo(() => {
+    return ambientesRows.filter((row) => {
+      if (filtroTipo && row.tipo !== filtroTipo) return false;
+      return true;
+    });
+  }, [ambientesRows, filtroTipo]);
+
   if (periodosLoading) return <SpinnerCarga />;
 
   return (
@@ -68,6 +76,22 @@ export default function AmbientesSecretariaPage() {
         </div>
       </div>
 
+      <div className="flex gap-4 mb-4">
+        <div className="w-48">
+          <Selector
+            label="Tipo de Ambiente"
+            opciones={[
+              { valor: '', etiqueta: 'Todos' },
+              { valor: 'TEORIA', etiqueta: 'TEORÍA' },
+              { valor: 'PRACTICA', etiqueta: 'PRÁCTICA' },
+              { valor: 'LABORATORIO', etiqueta: 'LABORATORIO' },
+            ]}
+            value={filtroTipo}
+            onChange={(e) => setFiltroTipo(e.target.value)}
+          />
+        </div>
+      </div>
+
       {ambientesLoading ? (
         <SpinnerCarga />
       ) : (
@@ -78,7 +102,7 @@ export default function AmbientesSecretariaPage() {
             { clave: 'capacidad', titulo: 'Capacidad' },
             { clave: 'bloques', titulo: 'Bloques asignados' },
           ]}
-          datos={ambientesRows}
+          datos={rowsFiltrados}
         />
       )}
     </div>
