@@ -190,7 +190,7 @@ export default function OfertaAcademicaPage() {
                 </div>
                 {comp.tipo === 'LABORATORIO' && comp.n_grupos > 1 && (
                   <p className="text-[10px] font-bold text-unt-primary mt-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
+                    <Clock/>
                     Total Carga Horaria: {comp.horas_requeridas * comp.n_grupos} horas (repartibles entre docentes)
                   </p>
                 )}
