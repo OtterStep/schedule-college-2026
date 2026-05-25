@@ -165,14 +165,26 @@ export default function CargaHorariaPage() {
                     <div className="grid gap-4">
                       {curso.oferta.componentes.map((comp: any) => {
                         const horasAsignadasActual = comp.asignaciones.reduce((acc: number, a: any) => acc + a.horas_asignadas, 0);
-                        const faltan = comp.horas_requeridas - horasAsignadasActual;
+                        const totalRequerido = comp.horas_requeridas;
+                        const faltan = totalRequerido - horasAsignadasActual;
+                        const nGrupos = comp.grupos?.length || 1;
                         
                         return (
                           <div key={comp.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border border-slate-100 gap-4">
                             <div className="flex-1">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700">
-                                {comp.tipo} ({comp.horas_requeridas}h)
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700">
+                                  {comp.tipo}
+                                </span>
+                                <span className="text-sm font-bold text-slate-700">
+                                  Carga Total: {totalRequerido}h
+                                  {nGrupos > 1 && (
+                                    <span className="text-[10px] text-slate-500 font-medium ml-2 bg-slate-100 px-2 py-0.5 rounded-full">
+                                      {nGrupos} grupos (Total {totalRequerido}h)
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
                               <div className="flex flex-wrap gap-2 mt-2">
                                 {comp.asignaciones.map((asig: any) => (
                                   <div key={asig.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border rounded-xl text-xs">

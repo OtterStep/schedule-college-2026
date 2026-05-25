@@ -10,7 +10,7 @@ import { Selector } from '@/components/ui/Selector';
 import { Boton } from '@/components/ui/Boton';
 import { CampoTexto } from '@/components/ui/CampoTexto';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2, Save, Clock } from 'lucide-react';
 
 export default function OfertaAcademicaPage() {
   const queryClient = useQueryClient();
@@ -74,12 +74,23 @@ export default function OfertaAcademicaPage() {
       setMensaje({ texto: 'Debe completar todos los campos obligatorios', tipo: 'error' });
       return;
     }
+    
+    // Validar que no haya horas en 0
+    if (componentes.some(c => c.horas_requeridas <= 0 || c.n_grupos <= 0)) {
+      setMensaje({ texto: 'Las horas y grupos deben ser mayores a 0', tipo: 'error' });
+      return;
+    }
+
     mutation.mutate({
       id_periodo: idPeriodo,
       id_curso: idCurso,
       id_ciclo: idCiclo,
       tipo_curso: tipoCurso,
-      componentes
+      componentes: componentes.map(c => ({
+        ...c,
+        horas_requeridas: Number(c.horas_requeridas),
+        n_grupos: Number(c.n_grupos)
+      }))
     });
   };
 
@@ -175,7 +186,7 @@ export default function OfertaAcademicaPage() {
                     ]}
                   />
                   <CampoTexto
-                    label="Horas Semanales"
+                    label={comp.tipo === 'LABORATORIO' ? "Horas/Semana (por grupo)" : "Horas/Semana"}
                     type="number"
                     value={comp.horas_requeridas}
                     onChange={(e: any) => actualizarComponente(index, 'horas_requeridas', Number(e.target.value))}
@@ -188,6 +199,12 @@ export default function OfertaAcademicaPage() {
                     disabled={comp.tipo === 'TEORIA'} // Teoría suele ser único
                   />
                 </div>
+                {comp.tipo === 'LABORATORIO' && (
+                  <p className="text-[11px] font-bold text-unt-primary mt-2 flex items-center gap-1 bg-unt-primary/5 p-2 rounded-lg">
+                    <Clock className="w-4 h-4" />
+                    RESUMEN: {comp.horas_requeridas}h por grupo × {comp.n_grupos} grupos = {comp.horas_requeridas * comp.n_grupos} horas totales de carga.
+                  </p>
+                )}
               </div>
             ))}
 

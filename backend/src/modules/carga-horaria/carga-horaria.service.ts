@@ -159,70 +159,90 @@ export class CargaHorariaService {
           }
         },
         update: {
-          tipo_curso: datos.tipo_curso
+          tipo_curso: datos.tipo_curso,
+          estado: 'BORRADOR' // Reactivar si estaba ELIMINADO
         },
         create: {
           id_periodo: datos.id_periodo,
           id_curso: datos.id_curso,
           id_ciclo: datos.id_ciclo,
-          tipo_curso: datos.tipo_curso
+          tipo_curso: datos.tipo_curso,
+          estado: 'BORRADOR'
         },
         include: {
           componentes: true
         }
       });
 
-      // 3. Validar contra componentes ya existentes en la base de datos para esta oferta
-      const tiposExistentes = oferta.componentes.map(c => c.tipo);
+      // 3. Procesar componentes (actualizar o crear)
+      const resultados = [];
       for (const comp of datos.componentes) {
-        if (tiposExistentes.includes(comp.tipo)) {
-          const curso = await tx.curso.findUnique({ where: { id: datos.id_curso } });
-          throw new Error(`El curso "${curso?.nombre}" ya tiene configurado el componente de ${comp.tipo} para este ciclo.`);
-        }
-      }
+        // CÁLCULO CRÍTICO: Horas Semanales (por grupo) * Cantidad de Grupos
+        const hPorGrupo = parseFloat(String(comp.horas_requeridas));
+        const nGrupos = parseInt(String(comp.n_grupos)) || 1;
+        const totalHoras = hPorGrupo * nGrupos;
 
-      // 4. Procesar nuevos componentes y grupos
-      for (const comp of datos.componentes) {
-        const componente = await tx.curso_componente.create({
-          data: {
-            id_oferta: oferta.id,
-            tipo: comp.tipo,
-            horas_requeridas: comp.horas_requeridas,
-            permite_multi_docente: comp.n_grupos > 1 || comp.tipo === 'TEORIA' ? false : true 
+        console.log(`[CONFIGURAR_OFERTA] ${comp.tipo}: ${hPorGrupo}h x ${nGrupos} grupos = ${totalHoras}h totales`);
+
+        // Buscar si ya existe el componente en esta oferta
+        const componenteExistente = oferta.componentes.find(c => c.tipo === comp.tipo);
+
+        let componente;
+        if (componenteExistente) {
+          // Si existe, actualizar con el total multiplicado
+          componente = await tx.curso_componente.update({
+            where: { id: componenteExistente.id },
+            data: {
+              horas_requeridas: totalHoras,
+              permite_multi_docente: true
+            }
+          });
+
+          // Gestionar Grupos
+          const gruposActuales = await tx.grupo.findMany({ where: { id_componente: componente.id } });
+          if (gruposActuales.length !== nGrupos) {
+            const tieneHorarios = await tx.bloque_horario.findFirst({ where: { id_componente: componente.id } });
+            if (tieneHorarios) {
+              throw new Error(`No se puede cambiar el número de grupos para ${comp.tipo} porque ya tiene horarios asignados.`);
+            }
+            
+            await tx.grupo.deleteMany({ where: { id_componente: componente.id } });
+            for (let i = 0; i < nGrupos; i++) {
+              await tx.grupo.create({
+                data: {
+                  id_componente: componente.id,
+                  codigo: String.fromCharCode(65 + i),
+                  capacidad_maxima: comp.tipo === 'LABORATORIO' ? 20 : 40
+                }
+              });
+            }
           }
-        });
+        } else {
+          // Crear nuevo componente con horas totales multiplicadas
+          componente = await tx.curso_componente.create({
+            data: {
+              id_oferta: oferta.id,
+              tipo: comp.tipo,
+              horas_requeridas: totalHoras,
+              permite_multi_docente: true
+            }
+          });
 
-        // Generar grupos
-        if (comp.tipo === 'TEORIA') {
-          await tx.grupo.create({
-            data: {
-              id_componente: componente.id,
-              codigo: 'UNICO',
-              capacidad_maxima: 40
-            }
-          });
-        } else if (comp.tipo === 'PRACTICA') {
-          await tx.grupo.create({
-            data: {
-              id_componente: componente.id,
-              codigo: 'A',
-              capacidad_maxima: 40
-            }
-          });
-        } else if (comp.tipo === 'LABORATORIO') {
-          for (let i = 0; i < comp.n_grupos; i++) {
+          // Crear grupos iniciales
+          for (let i = 0; i < nGrupos; i++) {
             await tx.grupo.create({
               data: {
                 id_componente: componente.id,
-                codigo: String.fromCharCode(65 + i), // A, B, C...
-                capacidad_maxima: 20 
+                codigo: nGrupos === 1 && comp.tipo === 'TEORIA' ? 'UNICO' : String.fromCharCode(65 + i),
+                capacidad_maxima: comp.tipo === 'LABORATORIO' ? 20 : 40
               }
             });
           }
         }
+        resultados.push(componente);
       }
 
-      return oferta;
+      return { ...oferta, componentes: resultados };
     });
   }
 
@@ -232,6 +252,26 @@ export class CargaHorariaService {
   static async eliminarAsignacion(id_asignacion: number) {
     return prisma.asignacion_docente_componente.delete({
       where: { id: id_asignacion }
+    });
+  }
+
+  /**
+   * Eliminar una oferta de curso (de manera lógica)
+   */
+  static async eliminarOferta(id_oferta: number) {
+    // 1. Verificar si tiene bloques horarios (clases programadas)
+    const tieneHorarios = await prisma.bloque_horario.findFirst({
+      where: { id_componente: { in: (await prisma.curso_componente.findMany({ where: { id_oferta }, select: { id: true } })).map(c => c.id) } }
+    });
+
+    if (tieneHorarios) {
+      throw new Error('No se puede eliminar la oferta porque ya tiene horarios programados. Elimine primero los bloques horarios.');
+    }
+
+    // 2. Eliminación lógica: cambiar estado a ELIMINADO
+    return prisma.curso_oferta.update({
+      where: { id: id_oferta },
+      data: { estado: 'ELIMINADO' }
     });
   }
 
@@ -249,7 +289,10 @@ export class CargaHorariaService {
    * Obtener cursos con oferta por período y ciclo
    */
   static async obtenerCursosPorCiclo(id_periodo: number, id_ciclo?: number) {
-    const where: any = { id_periodo };
+    const where: any = { 
+      id_periodo,
+      estado: { not: 'ELIMINADO' }
+    };
     if (id_ciclo) {
       where.id_ciclo = id_ciclo;
     }
