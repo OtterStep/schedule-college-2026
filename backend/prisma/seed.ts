@@ -1,5 +1,22 @@
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
 import { PrismaClient, TipoComponente, TipoCurso } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+
+for (const envPath of [
+  path.join(__dirname, '..', '.env'),
+  path.join(process.cwd(), '.env'),
+]) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    break;
+  }
+}
+
+if (!process.env.DATABASE_URL) {
+  console.warn('Aviso: DATABASE_URL no está definida. Define backend/.env o la variable de entorno antes de ejecutar el seed.');
+}
 
 const prisma = new PrismaClient();
 
@@ -553,6 +570,155 @@ async function main() {
       }
 
       console.log(`  ✓ [Ciclo ${def.ciclo}] ${def.nombre}`);
+    }
+
+    // ============================================================
+    // 7.1. CARGA DE PRUEBA: asegurar al menos 1 oferta/asignación/bloque por ciclo
+    // ============================================================
+    const ciclosConOferta = await prisma.ciclo.findMany({
+      where: { id_periodo: periodo.id },
+      include: {
+        ofertas: {
+          include: {
+            componentes: {
+              include: {
+                grupos: true,
+                asignaciones: true,
+              },
+            },
+          },
+          orderBy: { id: 'asc' },
+        },
+      },
+      orderBy: { numero: 'asc' },
+    });
+
+    const ambientesAula = await prisma.ambiente.findMany({
+      where: { activo: true, tipo: 'AULA' },
+      orderBy: { codigo: 'asc' },
+    });
+    const ambientesLab = await prisma.ambiente.findMany({
+      where: { activo: true, tipo: 'LABORATORIO' },
+      orderBy: { codigo: 'asc' },
+    });
+    const docentesDisponibles = Object.values(docenteMap);
+    const diasPrueba = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+    const horasPrueba = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '14:00', '15:00'];
+
+    for (const ciclo of ciclosConOferta) {
+      let oferta = ciclo.ofertas[0];
+
+      if (!oferta) {
+        const cursoDemo = await prisma.curso.upsert({
+          where: { codigo: `DEMO-${ciclo.numero}` },
+          update: { nombre: `Curso Demo Ciclo ${ciclo.numero}`, creditos: 2, activo: true },
+          create: {
+            codigo: `DEMO-${ciclo.numero}`,
+            nombre: `Curso Demo Ciclo ${ciclo.numero}`,
+            creditos: 2,
+            activo: true,
+          },
+        });
+
+        oferta = await prisma.curso_oferta.create({
+          data: {
+            id_periodo: periodo.id,
+            id_curso: cursoDemo.id,
+            id_ciclo: ciclo.id,
+            tipo_curso: TipoCurso.REGULAR,
+            estado: 'PUBLICADO',
+          },
+        });
+
+        const componenteDemo = await prisma.curso_componente.create({
+          data: {
+            id_oferta: oferta.id,
+            tipo: TipoComponente.TEORIA,
+            horas_requeridas: 2,
+            permite_multi_docente: false,
+          },
+        });
+
+        await prisma.grupo.create({
+          data: {
+            id_componente: componenteDemo.id,
+            codigo: 'UNICO',
+            capacidad_maxima: 40,
+            activo: true,
+          },
+        });
+
+        oferta = await prisma.curso_oferta.findUniqueOrThrow({
+          where: { id: oferta.id },
+          include: {
+            componentes: {
+              include: { grupos: true, asignaciones: true },
+            },
+          },
+        });
+      }
+
+      const componente = oferta.componentes[0];
+      if (!componente) continue;
+
+      const grupo = componente.grupos[0];
+      if (!grupo) continue;
+
+      const docente = docentesDisponibles[(ciclo.numero - 1) % docentesDisponibles.length];
+      const horasAsignadas = Math.max(1, Math.min(2, componente.horas_requeridas || 1));
+
+      let asignacion = componente.asignaciones[0];
+      if (!asignacion) {
+        asignacion = await prisma.asignacion_docente_componente.create({
+          data: {
+            id_componente: componente.id,
+            id_docente: docente.id,
+            horas_asignadas: horasAsignadas,
+          },
+        });
+      }
+
+      const ambiente = componente.tipo === TipoComponente.LABORATORIO
+        ? ambientesLab[(ciclo.numero - 1) % Math.max(ambientesLab.length, 1)] ?? ambientesAula[0]
+        : ambientesAula[(ciclo.numero - 1) % Math.max(ambientesAula.length, 1)] ?? ambientesLab[0];
+
+      const dia = diasPrueba[(ciclo.numero - 1) % diasPrueba.length];
+      const horaInicio = horasPrueba[(ciclo.numero - 1) % horasPrueba.length];
+      const horaFin = `${String(parseInt(horaInicio.slice(0, 2), 10) + horasAsignadas).padStart(2, '0')}:00`;
+
+      await prisma.bloque_horario.create({
+        data: {
+          id_periodo: periodo.id,
+          id_componente: componente.id,
+          id_docente: docente.id,
+          id_ambiente: ambiente?.id ?? null,
+          id_grupo: grupo.id,
+          dia_semana: dia,
+          hora_inicio: horaInicio,
+          hora_fin: horaFin,
+          estado: 'PUBLICADO',
+          pendiente_ambiente: false,
+          comentario: 'Bloque de prueba generado por seed',
+        },
+      });
+
+      if (horasAsignadas > 1) {
+        await prisma.bloque_horario.create({
+          data: {
+            id_periodo: periodo.id,
+            id_componente: componente.id,
+            id_docente: docente.id,
+            id_ambiente: ambiente?.id ?? null,
+            id_grupo: grupo.id,
+            dia_semana: dia,
+            hora_inicio: `${String(parseInt(horaInicio.slice(0, 2), 10) + 1).padStart(2, '0')}:00`,
+            hora_fin: `${String(parseInt(horaInicio.slice(0, 2), 10) + 2).padStart(2, '0')}:00`,
+            estado: 'PUBLICADO',
+            pendiente_ambiente: false,
+            comentario: 'Bloque contiguo de prueba generado por seed',
+          },
+        });
+      }
     }
 
     // ============================================================

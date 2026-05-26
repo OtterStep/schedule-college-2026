@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq';
 import { redis } from '@/lib/redis';
-import { GeneradorPDFService } from '@/modules/reportes/generador-pdf.service';
+import { GeneradorPdfService } from '@/modules/reportes/generador-pdf.service';
 import fs from 'fs';
 import path from 'path';
 
@@ -15,8 +15,16 @@ const worker = new Worker(
     // Actualizar progreso
     await job.updateProgress(10);
 
-    // Generar PDF
-    const pdfBuffer = await GeneradorPDFService.generar(tipo, parametros);
+    let pdfBuffer: Buffer;
+    if (tipo === 'docente') {
+      pdfBuffer = await GeneradorPdfService.generarHorarioDocentePdf(parametros.idPeriodo, parametros.idDocente);
+    } else if (tipo === 'aula' || tipo === 'laboratorio') {
+      pdfBuffer = await GeneradorPdfService.generarHorarioAmbientePdf(parametros.idPeriodo, parametros.idAula);
+    } else if (tipo === 'gestion') {
+      pdfBuffer = await GeneradorPdfService.generarGlobalPdf(parametros.idPeriodo);
+    } else {
+      throw new Error(`Tipo de reporte no soportado: ${tipo}`);
+    }
 
     await job.updateProgress(90);
 
