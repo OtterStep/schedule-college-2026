@@ -196,7 +196,7 @@ export class GeneradorPdfService {
     doc.text(`TÉRMINO DEL CICLO: ${periodo?.fecha_fin ? new Date(periodo.fecha_fin).toLocaleDateString('es-PE') : '-'}`, leftColX, topMargin + 95, { width: headerBoxWidth - 12, align: 'center' });
 
     const detailHeaders = ['N°', 'PROFESOR', 'ASIGNATURA', 'T', 'P', 'L', 'G', 'T.HORAS', 'DEPARTAMENTO'];
-    const colWidths = [14, 72, 92, 16, 16, 16, 16, 24, 59];
+    const colWidths = [14, 144, 92, 16, 16, 16, 16, 24, 59];
     let currentY = topMargin;
     let currentX = rightColX;
 
@@ -249,8 +249,10 @@ export class GeneradorPdfService {
         doc.rect(currentX, currentY, colWidths[i], 10).fill(`#${info.color.slice(2)}`).stroke('#E2E8F0');
         doc.fillColor('#334155').text(val, currentX, currentY + 2, {
           width: colWidths[i],
+          height: 10,
           align: 'center',
-          ellipsis: true
+          ellipsis: true,
+          lineBreak: false
         });
         currentX += colWidths[i];
       });
