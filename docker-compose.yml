@@ -59,8 +59,8 @@ services:
       NODE_ENV: development
       SMTP_HOST: "smtp.gmail.com"
       SMTP_PORT: "587"
-      SMTP_USER: "notkaduka2412@gmail.com"
-      SMTP_PASS: "flnh viqi fqfm qkti"
+      SMTP_USER: "" # Cambia esto por tu correo electrónico
+      SMTP_PASS: "" # Cambia esto por tu contraseña de aplicación
 
   frontend:
     build:

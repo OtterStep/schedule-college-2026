@@ -118,6 +118,19 @@ export default function VentanasSecretariaPage() {
     onError: (error: any) => setToast({ mensaje: error.response?.data?.error || 'Error al desactivar', tipo: 'error' }),
   });
 
+  const enviarCorreosMutation = useMutation({
+    mutationFn: () => ventanasService.enviarCorreos(idPeriodo as number),
+    onSuccess: (res) => {
+      const enviados = res.data?.enviados ?? 0;
+      const errores = res.data?.errores ?? 0;
+      setToast({
+        mensaje: `Correos enviados: ${enviados}${errores ? `, errores: ${errores}` : ''}`,
+        tipo: errores > 0 ? 'error' : 'exito',
+      });
+    },
+    onError: (error: any) => setToast({ mensaje: error.response?.data?.error || 'Error al enviar correos', tipo: 'error' }),
+  });
+
   const actualizarTurnoMutation = useMutation({
     mutationFn: () =>
       ventanasService.actualizarTurno({
@@ -290,6 +303,18 @@ export default function VentanasSecretariaPage() {
             <div className="flex gap-2">
               <Boton variante="secundario" onClick={() => setMostrarEdicion((prev) => !prev)}>
                 {mostrarEdicion ? 'Cancelar' : 'Editar parámetros'}
+              </Boton>
+              <Boton
+                variante="secundario"
+                onClick={() => {
+                  if (!idPeriodo || totalVentanas === 0) return;
+                  if (confirm('¿Enviar correos a todos los docentes de las ventanas?')) {
+                    enviarCorreosMutation.mutate();
+                  }
+                }}
+                disabled={!idPeriodo || totalVentanas === 0 || enviarCorreosMutation.isPending}
+              >
+                {enviarCorreosMutation.isPending ? 'Enviando correos...' : 'Enviar correos'}
               </Boton>
               <Boton
                 variante="peligro"

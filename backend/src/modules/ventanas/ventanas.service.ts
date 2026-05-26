@@ -227,43 +227,6 @@ export class VentanasService {
       return creadas;
     });
 
-    const periodoNombre = periodo?.nombre ?? String(idPeriodo);
-    const notificaciones = docentesOrdenados.map((docente, index) => {
-      const slot = slots[index];
-      const destinatario = docente.usuario?.email ?? docente.email;
-      if (!destinatario) return null;
-
-      const fecha = slot.fecha;
-      const y = fecha.getUTCFullYear();
-      const m = String(fecha.getUTCMonth() + 1).padStart(2, '0');
-      const d = String(fecha.getUTCDate()).padStart(2, '0');
-      const fechaStr = `${y}-${m}-${d}`;
-      const nombreCompleto = `${docente.nombres} ${docente.apellidos}`;
-
-      return ServicioCorreo.enviar(
-        destinatario,
-        `Ventana de atencion asignada - Periodo ${periodoNombre}`,
-        `
-          <h2>Ventana de atencion asignada</h2>
-          <p>Estimado/a <strong>${nombreCompleto}</strong>,</p>
-          <p>Se le ha asignado una ventana de atencion para el periodo <strong>${periodoNombre}</strong>.</p>
-          <p><strong>Fecha:</strong> ${fechaStr}</p>
-          <p><strong>Horario:</strong> ${slot.hora_inicio} - ${slot.hora_fin}</p>
-          <p>Ingrese al sistema en su turno para registrar su horario.</p>
-          <br/>
-          <p>Atentamente,<br/>Escuela de Ingenieria de Sistemas<br/>Universidad Nacional de Trujillo</p>
-        `
-      );
-    }).filter(Boolean) as Array<Promise<boolean>>;
-
-    if (notificaciones.length > 0) {
-      const resultados = await Promise.allSettled(notificaciones);
-      const fallidos = resultados.filter((r) => r.status === 'rejected').length;
-      if (fallidos > 0) {
-        console.warn(`[Ventanas] Correos de asignacion fallidos: ${fallidos}`);
-      }
-    }
-
     return { totalDocentes: docentesOrdenados.length, totalSlots: slots.length, ventanas };
   }
 
@@ -286,6 +249,62 @@ export class VentanasService {
     });
 
     return { mensaje: 'Ventanas desactivadas correctamente', total: ventanas.length };
+  }
+
+  static async enviarCorreosVentanas(idPeriodo: number) {
+    const periodo = await prisma.periodo_academico.findUnique({ where: { id: idPeriodo } });
+    const atenciones = await prisma.atencion_docente.findMany({
+      where: {
+        ventana: { id_periodo: idPeriodo, estado: { not: 'CANCELADO' } },
+      },
+      include: {
+        ventana: true,
+        docente: { include: { usuario: true } },
+      },
+      orderBy: { ventana: { fecha: 'asc' } },
+    });
+
+    if (atenciones.length === 0) {
+      return { enviados: 0, errores: 0, mensaje: 'No hay ventanas generadas para este periodo' };
+    }
+
+    const periodoNombre = periodo?.nombre ?? String(idPeriodo);
+
+    const resultados = await Promise.all(
+      atenciones.map(async (atencion) => {
+        const docente = atencion.docente;
+        const destinatario = docente.usuario?.email ?? docente.email;
+        if (!destinatario) return { ok: false };
+
+        const fecha = atencion.ventana.fecha;
+        const y = fecha.getUTCFullYear();
+        const m = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(fecha.getUTCDate()).padStart(2, '0');
+        const fechaStr = `${y}-${m}-${d}`;
+        const nombreCompleto = `${docente.nombres} ${docente.apellidos}`;
+
+        const ok = await ServicioCorreo.enviar(
+          destinatario,
+          `Ventana de atencion asignada - Periodo ${periodoNombre}`,
+          `
+            <h2>Ventana de atencion asignada</h2>
+            <p>Estimado/a <strong>${nombreCompleto}</strong>,</p>
+            <p>Se le ha asignado una ventana de atencion para el periodo <strong>${periodoNombre}</strong>.</p>
+            <p><strong>Fecha:</strong> ${fechaStr}</p>
+            <p><strong>Horario:</strong> ${atencion.ventana.hora_inicio} - ${atencion.ventana.hora_fin}</p>
+            <p>Ingrese al sistema en su turno para registrar su horario.</p>
+            <br/>
+            <p>Atentamente,<br/>Escuela de Ingenieria de Sistemas<br/>Universidad Nacional de Trujillo</p>
+          `
+        );
+
+        return { ok };
+      })
+    );
+
+    const enviados = resultados.filter((r) => r.ok).length;
+    const errores = resultados.length - enviados;
+    return { enviados, errores };
   }
 
   static async generarAutomaticamente(idPeriodo: number, fechaInicio: string) {
