@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import ExcelJS from 'exceljs';
+import { crearContextoHorarioCiclo, formatearEtiquetaCelda } from './horario-ciclo.utils';
 
 export class GeneradorExcelService {
   static async generarHorarioExcel(idPeriodo: number, idCiclo: number) {
@@ -26,15 +27,15 @@ export class GeneradorExcelService {
     const worksheet = workbook.addWorksheet(sheetName, {
       pageSetup: { 
         paperSize: 9, // A4
-        orientation: 'portrait',
+        orientation: 'landscape',
         fitToPage: true,
          fitToWidth: 1,
          margins: { left: 0.4, right: 0.4, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
        }
      });
 
-    // Definir 12 columnas para flexibilidad (4 para header, 8 para detalle/grid)
-    const colWidths = [15, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12];
+    // Definir columnas para cabecera, detalle y grilla
+    const colWidths = [15, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12];
     colWidths.forEach((w, i) => {
       worksheet.getColumn(i + 1).width = w;
     });
@@ -51,7 +52,8 @@ export class GeneradorExcelService {
       ['SECCIÓN: ÚNICA'],
       [`AÑO ACADÉMICO: ${new Date().getFullYear()}`],
       [`SEMESTRE: ${periodo?.nombre}`],
-      [`FECHA: ${new Date().toLocaleDateString('es-PE')}`]
+      [`INICIO DEL CICLO: ${periodo?.fecha_inicio ? new Date(periodo.fecha_inicio).toLocaleDateString('es-PE') : '-'}`],
+      [`TÉRMINO DEL CICLO: ${periodo?.fecha_fin ? new Date(periodo.fecha_fin).toLocaleDateString('es-PE') : '-'}`]
     ];
 
     headerRows.forEach((row, i) => {
@@ -59,23 +61,24 @@ export class GeneradorExcelService {
       const cell = worksheet.getCell(i + 1, 1);
       cell.value = row[0];
       cell.font = { bold: i < 3, size: i < 3 ? 10 : 9 };
-      cell.alignment = { horizontal: 'left' };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
     // 1.2 Tabla de Detalle (Derecha 2/3 -> Columnas E-L)
-    const detailHeaders = ['N°', 'PROFESOR', 'ASIGNATURA', 'TEO', 'LAB', 'GRP', 'TOTAL', 'DEP.'];
+    const detailHeaders = ['N°', 'PROFESOR', 'ASIGNATURA', 'T', 'P', 'L', 'G', 'T.HORAS', 'DEPARTAMENTO'];
     const detailStartRow = 1;
-    const detailCols = [5, 6, 7, 8, 9, 10, 11, 12];
+    const detailCols = [5, 6, 7, 8, 9, 10, 11, 12, 13];
     
     // Anchos específicos para la tabla de detalle
     worksheet.getColumn(5).width = 4;   // N°
     worksheet.getColumn(6).width = 25;  // PROFESOR
-    worksheet.getColumn(7).width = 30;  // ASIGNATURA
-    worksheet.getColumn(8).width = 5;   // TEO
-    worksheet.getColumn(9).width = 5;   // LAB
-    worksheet.getColumn(10).width = 5;  // GRP
-    worksheet.getColumn(11).width = 6;  // TOTAL
-    worksheet.getColumn(12).width = 15; // DEP.
+    worksheet.getColumn(7).width = 28;  // ASIGNATURA
+    worksheet.getColumn(8).width = 5;   // T
+    worksheet.getColumn(9).width = 5;   // P
+    worksheet.getColumn(10).width = 5;  // L
+    worksheet.getColumn(11).width = 5;  // G
+    worksheet.getColumn(12).width = 7;  // T.HORAS
+    worksheet.getColumn(13).width = 18; // DEPARTAMENTO
 
     detailHeaders.forEach((h, i) => {
       const cell = worksheet.getCell(detailStartRow, detailCols[i]);
@@ -86,88 +89,51 @@ export class GeneradorExcelService {
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    const ofertas = await prisma.curso_oferta.findMany({
-      where: { id_periodo: idPeriodo, id_ciclo: idCiclo },
+    const bloques = await prisma.bloque_horario.findMany({
+      where: {
+        id_periodo: idPeriodo,
+        componente: { oferta: { id_ciclo: idCiclo, id_periodo: idPeriodo } }
+      },
       include: {
-        curso: true,
-        componentes: {
+        docente: true,
+        ambiente: true,
+        grupo: true,
+        componente: {
           include: {
-            grupos: true,
-            asignaciones: { include: { docente: true } }
+            oferta: { include: { curso: true } }
           }
         }
-      }
+      },
+      orderBy: [
+        { dia_semana: 'asc' },
+        { hora_inicio: 'asc' },
+        { id_docente: 'asc' },
+        { id_componente: 'asc' },
+        { id_grupo: 'asc' }
+      ]
     });
-
-    const coloresPasteles = [
-      'FFF0F9FF', 'FFF5F3FF', 'FFECFDF5', 'FFFFFBEB', 'FFFFF1F2',
-      'FFEFF6FF', 'FFF5F5F4', 'FFF0FDFA', 'FFFFFAF0', 'FFFDF2F8',
-      'FFF0FDF4', 'FFFEF2F2', 'FFFEFCE8', 'FFF5F3FF', 'FFF8FAFC'
-    ];
-    
-    // Mapeo por Docente-Curso para que tengan ID y Color único por curso
-    const mapaDocenteCurso: Record<string, { 
-      indice: number; 
-      color: string; 
-      nombre: string;
-      cursoNombre: string;
-      teo: number;
-      lab: number;
-      grupos: number;
-      total: number;
-      idDocente: number;
-    }> = {};
-    
-    let indexDocente = 1;
-
-    for (const o of ofertas) {
-      for (const comp of o.componentes) {
-        for (const asig of comp.asignaciones) {
-          const key = `${asig.id_docente}-${o.id_curso}`;
-          
-          if (!mapaDocenteCurso[key]) {
-            mapaDocenteCurso[key] = {
-              indice: indexDocente++,
-              color: coloresPasteles[(indexDocente - 2) % coloresPasteles.length].replace('FF', ''),
-              nombre: `${asig.docente.apellidos}, ${asig.docente.nombres.substring(0,1)}.`,
-              cursoNombre: o.curso.nombre,
-              teo: 0,
-              lab: 0,
-              grupos: 0,
-              total: 0,
-              idDocente: asig.id_docente
-            };
-          }
-
-          if (comp.tipo === 'TEORIA') mapaDocenteCurso[key].teo += asig.horas_asignadas;
-          else if (comp.tipo === 'LABORATORIO') mapaDocenteCurso[key].lab += asig.horas_asignadas;
-          
-          mapaDocenteCurso[key].grupos += comp.grupos.length;
-          mapaDocenteCurso[key].total += asig.horas_asignadas;
-        }
-      }
-    }
+    const contexto = crearContextoHorarioCiclo(bloques as any);
 
     let currentRowDetail = detailStartRow + 1;
-    for (const key in mapaDocenteCurso) {
-      const info = mapaDocenteCurso[key];
+    for (const info of contexto.registros) {
       const data = [
         info.indice,
-        info.nombre,
+        info.docenteNombre,
         info.cursoNombre,
-        info.teo,
-        info.lab,
-        info.grupos,
-        info.total,
-        'SISTEMAS'
+        info.teoria,
+        info.practica,
+        info.laboratorio,
+        info.grupoCodigo,
+        info.totalHoras,
+        info.departamento
       ];
 
       data.forEach((val, i) => {
         const cell = worksheet.getCell(currentRowDetail, detailCols[i]);
         cell.value = val;
         cell.font = { size: 8 };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + info.color } };
-        cell.alignment = { horizontal: i === 1 || i === 2 ? 'left' : 'center' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: info.color } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
       });
       currentRowDetail++;
@@ -202,18 +168,6 @@ export class GeneradorExcelService {
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    const bloques = await prisma.bloque_horario.findMany({
-      where: { 
-        id_periodo: idPeriodo, 
-        componente: { oferta: { id_ciclo: idCiclo, id_periodo: idPeriodo } }
-      },
-      include: {
-        componente: { include: { oferta: { include: { curso: true } } } },
-        docente: true,
-        ambiente: true
-      }
-    });
-
     horas.forEach((hora, hIdx) => {
       const row = startRowHorario + 1 + hIdx;
       worksheet.mergeCells(row, 1, row, 2);
@@ -230,12 +184,10 @@ export class GeneradorExcelService {
         worksheet.mergeCells(row, colStart, row, colEnd);
         const cell = worksheet.getCell(row, colStart);
         
-        const bloque = bloques.find(b => b.dia_semana === dia && b.hora_inicio === hora);
-        if (bloque) {
-          const key = `${bloque.id_docente}-${bloque.componente.id_oferta}`;
-          const infoDocente = mapaDocenteCurso[key];
-          cell.value = `${infoDocente?.indice || '?'}\n(${bloque.ambiente?.codigo || 'Solic.'})`;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + (infoDocente?.color || 'FFFFFF') } };
+        const entradas = contexto.celdas[`${dia}-${hora}`] ?? [];
+        if (entradas.length > 0) {
+          cell.value = entradas.map(({ registro, bloque }) => formatearEtiquetaCelda(registro, bloque)).join('\n\n');
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: entradas[0].registro.color } };
           cell.font = { bold: true, size: 8 };
         }
         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
