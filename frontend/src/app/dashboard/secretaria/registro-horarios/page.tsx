@@ -371,7 +371,7 @@ export default function RegistroManualHorariosPage() {
                     <h3 className="text-xs font-black uppercase tracking-widest text-white/50 mb-4 flex items-center gap-2">
                       <Clock className="w-3.5 h-3.5" /> Horas Asignadas
                     </h3>
-                    <IndicadorProgresoHoras progreso={progreso || []} dark />
+                    <IndicadorProgresoHoras progreso={progreso || []}/>
                   </div>
 
                   <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
