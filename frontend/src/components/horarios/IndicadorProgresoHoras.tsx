@@ -12,21 +12,35 @@ interface IndicadorProgresoHorasProps {
 
 export function IndicadorProgresoHoras({ progreso }: IndicadorProgresoHorasProps) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {progreso.map((item, idx) => {
-        const porcentaje = item.horasRequeridas > 0 ? Math.round((item.horasAsignadas / item.horasRequeridas) * 100) : 0;
+        const porcentaje = item.horasRequeridas > 0 ? Math.min(Math.round((item.horasAsignadas / item.horasRequeridas) * 100), 100) : 0;
+        const estaCompleto = item.horasAsignadas >= item.horasRequeridas;
+        
         return (
-          <div key={idx} className="flex items-center gap-2">
-            <span className="text-sm w-40 truncate">{item.nombreCurso} ({item.tipoComponente})</span>
-            <div className="flex-1 bg-gray-200 rounded h-4">
+          <div key={idx} className="space-y-1.5">
+            <div className="flex justify-between items-center px-0.5">
+              <div className="flex flex-col">
+                <span className="text-[11px] font-bold text-white/90 leading-tight truncate max-w-[140px]">
+                  {item.nombreCurso}
+                </span>
+                <span className="text-[9px] font-medium text-white/40 uppercase tracking-widest">
+                  {item.tipoComponente}
+                </span>
+              </div>
+              <span className="text-[10px] font-black text-white/60 tabular-nums">
+                {item.horasAsignadas} / {item.horasRequeridas}h
+              </span>
+            </div>
+            
+            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
               <div
-                className="bg-blue-500 h-4 rounded"
+                className={`h-full rounded-full transition-all duration-500 ease-out ${
+                  estaCompleto ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.2)]'
+                }`}
                 style={{ width: `${porcentaje}%` }}
               />
             </div>
-            <span className="text-sm w-20 text-right">
-              {item.horasAsignadas}/{item.horasRequeridas}h
-            </span>
           </div>
         );
       })}

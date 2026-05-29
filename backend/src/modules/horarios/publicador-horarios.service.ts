@@ -233,6 +233,7 @@ export class PublicadorHorarios {
       SELECT id_ambiente, dia_semana, hora_inicio, COUNT(*) as count
       FROM bloque_horario
       WHERE id_periodo = ${idPeriodo}
+        AND id_ambiente IS NOT NULL
         AND estado IN ('CONFIRMADO', 'PUBLICADO', 'BORRADOR')
       GROUP BY id_ambiente, dia_semana, hora_inicio
       HAVING COUNT(*) > 1
@@ -240,6 +241,24 @@ export class PublicadorHorarios {
 
     for (const cruce of crucesAmbiente) {
       const ambiente = await prisma.ambiente.findUnique({ where: { id: cruce.id_ambiente } });
+      
+      // EXCEPCIÓN: Si es un LABORATORIO, se permiten múltiples grupos si todos son del tipo LABORATORIO
+      if (ambiente?.tipo === 'LABORATORIO') {
+        const bloques = await prisma.bloque_horario.findMany({
+          where: {
+            id_periodo: idPeriodo,
+            id_ambiente: cruce.id_ambiente,
+            dia_semana: cruce.dia_semana,
+            hora_inicio: cruce.hora_inicio,
+            estado: { in: ['CONFIRMADO', 'PUBLICADO', 'BORRADOR'] },
+          },
+          include: { componente: true },
+        });
+
+        const todosSonLab = bloques.every(b => b.componente.tipo === 'LABORATORIO');
+        if (todosSonLab) continue; // No es un conflicto real para laboratorios
+      }
+
       conflictos.push({
         tipo: 'CRUCE_AMBIENTE',
         descripcion: `El ambiente ${ambiente?.codigo} tiene ${cruce.count} reservas el ${cruce.dia_semana} a las ${cruce.hora_inicio}`,
@@ -267,6 +286,48 @@ export class PublicadorHorarios {
         tipo: 'CRUCE_GRUPO',
         descripcion: `El grupo ${grupo?.codigo} de ${grupo?.componente.oferta.curso.nombre} tiene ${cruce.count} clases el ${cruce.dia_semana} a las ${cruce.hora_inicio}`,
         involucrados: [`Grupo ID ${cruce.id_grupo}`],
+      });
+    }
+
+    // 4. Cruce de Ciclo (NUEVO: Validar que un ciclo no tenga cruces, excepto laboratorios)
+    const crucesCiclo = await prisma.$queryRaw<Array<{ id_ciclo: number; dia_semana: string; hora_inicio: string; count: number }>>`
+      SELECT o.id_ciclo, b.dia_semana, b.hora_inicio, COUNT(*) as count
+      FROM bloque_horario b
+      JOIN curso_componente c ON b.id_componente = c.id_componente
+      JOIN curso_oferta o ON c.id_oferta = o.id_curso_oferta
+      WHERE b.id_periodo = ${idPeriodo}
+        AND b.estado IN ('CONFIRMADO', 'PUBLICADO', 'BORRADOR')
+      GROUP BY o.id_ciclo, b.dia_semana, b.hora_inicio
+      HAVING COUNT(*) > 1
+    `;
+
+    for (const cruce of crucesCiclo) {
+      const bloques = await prisma.bloque_horario.findMany({
+        where: {
+          id_periodo: idPeriodo,
+          dia_semana: cruce.dia_semana,
+          hora_inicio: cruce.hora_inicio,
+          componente: {
+            oferta: { id_ciclo: cruce.id_ciclo }
+          },
+          estado: { in: ['CONFIRMADO', 'PUBLICADO', 'BORRADOR'] },
+        },
+        include: { 
+          componente: { 
+            include: { oferta: { include: { curso: true, ciclo: true } } } 
+          } 
+        },
+      });
+
+      // EXCEPCIÓN: Se permiten múltiples si TODOS son del tipo LABORATORIO
+      const todosSonLab = bloques.every(b => b.componente.tipo === 'LABORATORIO');
+      if (todosSonLab) continue;
+
+      const ciclo = bloques[0]?.componente.oferta.ciclo;
+      conflictos.push({
+        tipo: 'CRUCE_CICLO',
+        descripcion: `El ciclo ${ciclo?.numero} tiene ${cruce.count} cursos programados el ${cruce.dia_semana} a las ${cruce.hora_inicio}`,
+        involucrados: [`Ciclo ID ${cruce.id_ciclo}`],
       });
     }
 

@@ -51,7 +51,7 @@ export function MatrizDisponibilidad({ matriz, alHacerClickCelda, bloqueado = fa
     );
   }
 
-  const dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+  const dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 
   return (
     <div className="space-y-4">
@@ -59,7 +59,7 @@ export function MatrizDisponibilidad({ matriz, alHacerClickCelda, bloqueado = fa
         <table className="min-w-full border-collapse text-left text-xs">
           <thead>
             <tr className="bg-gray-50/80 border-b border-gray-200">
-              <th className="border-r border-gray-200 px-4 py-3 font-semibold text-gray-500 text-center w-24">Hora</th>
+              <th className="border-r border-gray-200 px-4 py-3 font-semibold text-gray-500 text-center w-32">Hora</th>
               {dias.map((dia) => (
                 <th key={dia} className="border-r border-gray-200 px-4 py-3 font-semibold text-gray-600 text-center uppercase tracking-wider">
                   {dia}
@@ -68,12 +68,14 @@ export function MatrizDisponibilidad({ matriz, alHacerClickCelda, bloqueado = fa
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-150">
-            {matriz.filas.map((fila) => (
-              <tr key={fila.horaInicio} className="hover:bg-slate-50/30 transition-colors">
-                <td className="border-r border-gray-200 px-4 py-3 text-center font-semibold bg-slate-50/50 text-gray-500 w-24">
-                  {fila.horaInicio}
-                </td>
-                {fila.celdas.map((celda, idx) => (
+            {matriz.filas.map((fila) => {
+              const horaFin = `${(parseInt(fila.horaInicio.split(':')[0]) + 1).toString().padStart(2, '0')}:00`;
+              return (
+                <tr key={fila.horaInicio} className="hover:bg-slate-50/30 transition-colors">
+                  <td className="border-r border-gray-200 px-4 py-3 text-center font-semibold bg-slate-50/50 text-gray-500 w-32">
+                    {fila.horaInicio} - {horaFin}
+                  </td>
+                  {fila.celdas.map((celda, idx) => (
                   <td
                     key={idx}
                     className={cn(
@@ -148,7 +150,8 @@ export function MatrizDisponibilidad({ matriz, alHacerClickCelda, bloqueado = fa
                   </td>
                 ))}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

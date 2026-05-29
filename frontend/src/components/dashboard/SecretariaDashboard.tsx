@@ -123,7 +123,7 @@ export default function SecretariaDashboard() {
     .slice(0, 10); // Mostrar top 10 o los que tengan menos avance
 
   return (
-    <div className="space-y-10 max-w-[1600px] mx-auto pb-20">
+    <div className="space-y-10 max-w-[1800px] mx-auto pb-20 px-4 md:px-8">
       {/* Header Estilo Classroom */}
       <div className="relative overflow-hidden rounded-[3rem] bg-gradient-to-br from-[#0b1f3a] via-[#123b6d] to-[#0f4c81] px-10 py-12 text-white shadow-2xl">
         <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />

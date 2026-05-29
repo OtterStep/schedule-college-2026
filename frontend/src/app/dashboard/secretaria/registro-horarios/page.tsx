@@ -221,7 +221,7 @@ export default function RegistroManualHorariosPage() {
   if (periodoLoading) return <SpinnerCarga />;
 
   return (
-    <div className="space-y-10 max-w-[1400px] mx-auto pb-20">
+    <div className="space-y-10 max-w-[1600px] mx-auto pb-20 px-4">
       {/* Header Estilo Classroom */}
       <div className="relative overflow-hidden rounded-[3rem] bg-gradient-to-br from-[#0b1f3a] via-[#123b6d] to-[#0f4c81] px-10 py-12 text-white shadow-2xl">
         <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
@@ -254,195 +254,237 @@ export default function RegistroManualHorariosPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-4 duration-700">
+      <div className="animate-in slide-in-from-bottom-4 duration-700 space-y-10">
         
-        {/* PANEL IZQUIERDO: CONFIGURACIÓN (4/12) */}
-        <div className="lg:col-span-4 space-y-8">
+        {/* FILA SUPERIOR: SELECTORES Y CONFIGURACIÓN */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch">
           
-          {/* Tarjeta: Selección de Docente */}
-          <div className="bg-white rounded-[3rem] shadow-xl border border-slate-200/60 p-8 space-y-6 overflow-visible">
-            <div className="flex items-center gap-4 mb-2">
-              <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
-                <User className="w-6 h-6" />
+          {/* Tarjeta 1: Selección de Docente (3/12) */}
+          <div className="xl:col-span-3 bg-white rounded-[2.5rem] shadow-xl border border-slate-200/60 p-8 flex flex-col justify-between overflow-visible min-h-[280px]">
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600 shadow-sm">
+                  <User className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800 tracking-tight">Docente</h2>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Identificación</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-800 tracking-tight">Docente</h2>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Identificación</p>
+
+              <div className="pt-2">
+                <SelectorFiltrable
+                  label=""
+                  value={docenteId || 0}
+                  onChange={(val) => {
+                    const id = Number(val);
+                    setDocenteId(id || null);
+                    setComponenteSeleccionado(null);
+                    setGrupoSeleccionado(null);
+                    setAmbienteId(null);
+                  }}
+                  opciones={(docentes || []).map((d: any) => ({
+                    valor: d.id,
+                    etiqueta: `${d.apellidos}, ${d.nombres}`
+                  }))}
+                  placeholder="Buscar docente..."
+                />
               </div>
             </div>
-
-            <SelectorFiltrable
-              label=""
-              value={docenteId || 0}
-              onChange={(val) => {
-                const id = Number(val);
-                setDocenteId(id || null);
-                setComponenteSeleccionado(null);
-                setGrupoSeleccionado(null);
-                setAmbienteId(null);
-              }}
-              opciones={(docentes || []).map((d: any) => ({
-                valor: d.id,
-                etiqueta: `${d.apellidos}, ${d.nombres}`
-              }))}
-              placeholder="Buscar docente..."
-            />
+            
+            {docenteId && (
+              <div className="mt-4 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                <p className="text-xs font-bold text-indigo-700">Sesión activa para registro</p>
+              </div>
+            )}
           </div>
 
-          {!docenteId ? (
-            <div className="bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-200 p-12 text-center space-y-4">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto shadow-sm">
-                <Search className="w-8 h-8 text-slate-300" />
+          {/* Tarjeta 2: Curso y Ambiente (5/12) */}
+          <div className="xl:col-span-5 bg-white rounded-[2.5rem] shadow-xl border border-slate-200/60 p-8 flex flex-col min-h-[280px]">
+            {!docenteId ? (
+              <div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-50">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
+                  <Search className="w-8 h-8 text-slate-300" />
+                </div>
+                <p className="text-slate-400 font-bold text-sm">Seleccione un docente primero</p>
               </div>
-              <p className="text-slate-400 font-bold text-sm">Seleccione un docente para cargar su carga académica.</p>
-            </div>
-          ) : (
-            <>
-              {/* Tarjeta: Curso y Ambiente */}
-              <div className="bg-white rounded-[3rem] shadow-xl border border-slate-200/60 p-8 space-y-8">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600">
-                      <BookOpen className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-800 tracking-tight">Curso y Ambiente</h2>
-                      <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Configuración de Asignación</p>
+            ) : (
+              <div className="space-y-6 flex-1 flex flex-col">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 shadow-sm">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-800 tracking-tight">Curso y Ambiente</h2>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Configuración</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-11 gap-6 flex-1">
+                  <div className="md:col-span-6 space-y-2 flex flex-col">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Componente</p>
+                    <div className="flex-1 min-h-[140px] bg-slate-50/50 rounded-2xl border border-slate-100 overflow-hidden">
+                      <div className="h-full overflow-y-auto custom-scrollbar p-1">
+                        <PanelSeleccionCurso
+                          componentes={progreso || []}
+                          componenteSeleccionado={componenteSeleccionado}
+                          alCambiarComponente={(id) => setComponenteSeleccionado(id || null)}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-6 pt-2">
-                    <div className="p-1 bg-slate-50 rounded-[2rem] border border-slate-100">
-                      <PanelSeleccionCurso
-                        componentes={progreso || []}
-                        componenteSeleccionado={componenteSeleccionado}
-                        alCambiarComponente={(id) => setComponenteSeleccionado(id || null)}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4">
+                  <div className="md:col-span-5 flex flex-col justify-between gap-4">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ambiente</p>
                       <Selector
-                        label="Ambiente (Aula/Lab)"
+                        label=""
                         opciones={[
-                          { valor: '', etiqueta: 'Seleccionar ambiente' },
+                          { valor: '', etiqueta: 'Elegir ambiente' },
                           ...ambientesFiltrados.map((a: any) => ({
                             valor: String(a.id),
-                            etiqueta: `${a.codigo} (${a.tipo === 'AULA' ? 'Aula' : 'Laboratorio'}, Cap: ${a.capacidad})`,
+                            etiqueta: `${a.codigo} (${a.tipo === 'AULA' ? 'Aula' : 'Lab'}, Cap: ${a.capacidad})`,
                           })),
                         ]}
                         value={ambienteId?.toString() || ''}
                         onChange={(e) => setAmbienteId(e.target.value ? parseInt(e.target.value, 10) : null)}
-                        className="rounded-2xl border-slate-200"
+                        className="rounded-xl border-slate-200 bg-white"
                       />
+                    </div>
 
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Grupo</p>
                       <Selector
-                        label="Grupo Académico"
+                        label=""
                         opciones={[
-                          { valor: '', etiqueta: 'Seleccionar grupo' },
+                          { valor: '', etiqueta: 'Elegir grupo' },
                           ...((gruposDisponibles || []).map((g: any) => ({
                             valor: String(g.id),
-                            etiqueta: `G${g.codigo} (Aforo: ${g.capacidad_maxima})`,
+                            etiqueta: `G${g.codigo} (Cap: ${g.capacidad_maxima})`,
                           })) || []),
                         ]}
                         value={grupoSeleccionado?.toString() || ''}
                         onChange={(e) => setGrupoSeleccionado(e.target.value ? parseInt(e.target.value, 10) : null)}
                         disabled={!componenteSeleccionado || gruposLoading}
-                        className="rounded-2xl border-slate-200"
+                        className="rounded-xl border-slate-200 bg-white"
                       />
                     </div>
                   </div>
                 </div>
               </div>
+            )}
+          </div>
 
-              {/* Tarjeta: Progreso y Validaciones */}
-              <div className="bg-[#0b1f3a] rounded-[3rem] shadow-2xl p-8 text-white space-y-8">
+          {/* Tarjeta 3: Progreso y Reglas (4/12) */}
+          <div className="xl:col-span-4 bg-[#0b1f3a] rounded-[2.5rem] shadow-2xl p-8 text-white flex flex-col min-h-[280px]">
+            {!docenteId ? (
+              <div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-30">
+                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center">
+                  <ShieldCheck className="w-8 h-8 text-white" />
+                </div>
+                <p className="text-white font-bold text-sm">Validación en espera</p>
+              </div>
+            ) : (
+              <div className="space-y-6 flex-1 flex flex-col">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white/10 rounded-2xl">
+                  <div className="p-3 bg-white/10 rounded-2xl shadow-inner">
                     <Activity className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold tracking-tight">Progreso y Reglas</h2>
-                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Validación en tiempo real</p>
+                    <h2 className="text-xl font-bold tracking-tight text-white">Estado</h2>
+                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Reglas de Negocio</p>
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-white/50 mb-4 flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5" /> Horas Asignadas
-                    </h3>
-                    <IndicadorProgresoHoras progreso={progreso || []}/>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col">
+                    <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-3">Progreso de Horas</p>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                      <IndicadorProgresoHoras progreso={progreso || []}/>
+                    </div>
                   </div>
-
-                  <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-white/50 mb-4 flex items-center gap-2">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Estado de Reglas
-                    </h3>
-                    <PanelValidaciones validacion={validacion || null} />
+                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col">
+                    <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-3">Alertas y Cruces</p>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                      <PanelValidaciones validacion={validacion || null} />
+                    </div>
                   </div>
                 </div>
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* PANEL DERECHO: MATRIZ Y HORARIO (8/12) */}
-        <div className="lg:col-span-8 space-y-8">
+        {/* FILA INFERIOR: MATRIZ Y VISTA PREVIA */}
+        <div className="space-y-8">
           
-          {/* Matriz de Disponibilidad */}
-          <div className="bg-white rounded-[3rem] shadow-xl border border-slate-200/60 p-8 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-amber-50 rounded-2xl text-amber-600">
-                  <LayoutDashboard className="w-6 h-6" />
+          {/* Matriz de Disponibilidad (Ahora a todo lo ancho) */}
+          <div className="bg-white rounded-[3rem] shadow-xl border border-slate-200/60 p-10 space-y-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-8">
+              <div className="flex items-center gap-6">
+                <div className="p-4 bg-amber-50 rounded-3xl text-amber-600 shadow-sm">
+                  <LayoutDashboard className="w-8 h-8" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-slate-800 tracking-tight">Matriz de Horarios</h2>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-                    {ambienteId ? `Ambiente: ${matriz?.ambienteCodigo || 'Cargando...'}` : 'Seleccione un ambiente para comenzar'}
+                  <h2 className="text-3xl font-black text-slate-800 tracking-tight">Matriz de Horarios</h2>
+                  <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">
+                    {ambienteId ? (
+                      <span className="flex items-center gap-2">
+                        Ambiente: <span className="text-slate-600 font-black">{matriz?.ambienteCodigo || 'Cargando...'}</span>
+                      </span>
+                    ) : 'Seleccione un ambiente para visualizar la disponibilidad'}
                   </p>
                 </div>
               </div>
               {ambienteId && (
-                <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 text-[10px] font-black uppercase tracking-widest">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Sincronizado
+                <div className="flex items-center gap-3 px-6 py-3 bg-emerald-50 text-emerald-600 rounded-[1.5rem] border border-emerald-100 text-xs font-black uppercase tracking-widest shadow-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Sistema Sincronizado
                 </div>
               )}
             </div>
 
-            <div className="min-h-[500px]">
+            <div className="min-h-[600px] overflow-x-auto custom-scrollbar pt-4">
               <MatrizDisponibilidad matriz={matriz || null} alHacerClickCelda={manejarClickCelda} />
             </div>
           </div>
 
-          {/* Horario Actual y Confirmación */}
-          <div className="grid grid-cols-1 gap-8">
-            <div className="bg-white rounded-[3rem] shadow-xl border border-slate-200/60 p-8 space-y-6">
-              <div className="flex items-center gap-4 border-b border-slate-100 pb-6">
-                <div className="p-3 bg-blue-50 rounded-2xl text-blue-600">
-                  <Calendar className="w-6 h-6" />
+          {/* Horario del Docente y Confirmación Final */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div className="xl:col-span-2 bg-white rounded-[3rem] shadow-xl border border-slate-200/60 p-10 space-y-8">
+              <div className="flex items-center gap-6 border-b border-slate-100 pb-8">
+                <div className="p-4 bg-blue-50 rounded-3xl text-blue-600 shadow-sm">
+                  <Calendar className="w-8 h-8" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-800 tracking-tight">Horario del Docente</h2>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Vista Previa de Carga</p>
+                  <h2 className="text-2xl font-black text-slate-800 tracking-tight">Carga Horaria Actual</h2>
+                  <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Vista Previa Consolidada</p>
                 </div>
               </div>
-              <VistaHorarioDocente selecciones={selecciones} alQuitarCelda={quitarCeldaVistaPrevia} />
+              <div className="overflow-x-auto custom-scrollbar">
+                <VistaHorarioDocente selecciones={selecciones} alQuitarCelda={quitarCeldaVistaPrevia} />
+              </div>
             </div>
 
-            {docenteId && (
-              <div className="bg-gradient-to-r from-[#0b1f3a] to-[#123b6d] rounded-[3rem] shadow-2xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8">
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-black tracking-tight">Confirmar Registro</h3>
-                  <p className="text-white/60 text-sm max-w-md">
-                    Al confirmar, todos los bloques temporales se guardarán oficialmente en el periodo académico activo.
-                  </p>
+            <div className="bg-gradient-to-br from-[#0b1f3a] to-[#1e3a8a] rounded-[3rem] shadow-2xl p-10 text-white flex flex-col justify-between relative overflow-hidden group">
+              <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/5 rounded-full group-hover:scale-150 transition-transform duration-700" />
+              
+              <div className="space-y-4 relative z-10">
+                <div className="p-4 bg-white/10 rounded-2xl w-fit">
+                  <ShieldCheck className="w-8 h-8 text-emerald-400" />
                 </div>
+                <h3 className="text-3xl font-black tracking-tight leading-tight">Confirmar Programación</h3>
+                <p className="text-white/60 text-sm leading-relaxed">
+                  Verifica que no existan advertencias en el panel de reglas antes de confirmar. Esta acción es irreversible una vez guardada.
+                </p>
+              </div>
+
+              <div className="pt-8 relative z-10">
                 <ConfirmacionHorario
-                  docenteId={docenteId}
+                  docenteId={docenteId || 0}
                   idPeriodo={idPeriodo}
-                  deshabilitado={validacion ? !validacion.valido : false}
+                  deshabilitado={!docenteId || (validacion ? !validacion.valido : false)}
                   alConfirmar={() => {
                     queryClient.invalidateQueries({ queryKey: ['selecciones-temporales', docenteId] });
                     queryClient.invalidateQueries({ queryKey: ['horarios-general', idPeriodo] });
@@ -452,10 +494,28 @@ export default function RegistroManualHorariosPage() {
                   }}
                 />
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f8fafc;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #e2e8f0;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #cbd5e1;
+        }
+      `}</style>
 
       {mensaje && (
         <NotificacionToast 

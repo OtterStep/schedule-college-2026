@@ -159,15 +159,25 @@ export class GeneradorPdfService {
     horas.forEach((hora) => {
       doc.rect(leftColX, y, gridColWidth, gridRowHeight).stroke('#E2E8F0');
       doc.fillColor('#1E293B').font('Helvetica-Bold').fontSize(7).text(hora, leftColX, y + 8, { width: gridColWidth, align: 'center' });
+
       dias.forEach((dia, dIdx) => {
         const x = leftColX + (dIdx + 1) * gridColWidth;
-        const bloque = bloques.find(b => b.dia_semana === dia && b.hora_inicio === hora);
+        const celdasEnHora = bloques.filter(b => b.dia_semana === dia && b.hora_inicio === hora);
+        
         doc.rect(x, y, gridColWidth, gridRowHeight).stroke('#E2E8F0');
-        if (bloque) {
-          const info = mapaCursos[bloque.componente.id_oferta];
-          doc.rect(x + 1, y + 1, gridColWidth - 2, gridRowHeight - 2).fill(info?.color || '#FFFFFF');
-          doc.fillColor('#1E293B').font('Helvetica-Bold').fontSize(8).text(String(info?.indice || '?'), x, y + 4, { width: gridColWidth, align: 'center' });
-          doc.fontSize(6).font('Helvetica').text(`(${bloque.ambiente?.codigo || 'Solic.'})`, x, y + 14, { width: gridColWidth, align: 'center' });
+        if (celdasEnHora.length > 0) {
+          const numCols = Math.min(celdasEnHora.length, 2);
+          const colW = (gridColWidth - 2) / numCols;
+
+          celdasEnHora.slice(0, 2).forEach((bloque, bIdx) => {
+            const entryX = x + 1 + (bIdx * colW);
+            const info = mapaCursos[bloque.componente.id_oferta];
+            doc.rect(entryX, y + 1, colW, gridRowHeight - 2).fill(info?.color || '#FFFFFF');
+            
+            doc.fillColor('#1E293B').font('Helvetica-Bold').fontSize(7).text(String(info?.indice || '?'), entryX, y + 3, { width: colW, align: 'center' });
+            const ambienteCodigo = (bloque as any).ambiente?.codigo || 'Solic.';
+            doc.fontSize(5).font('Helvetica').text(`(${ambienteCodigo})`, entryX, y + 12, { width: colW, align: 'center' });
+          });
         }
       });
       y += gridRowHeight;
@@ -290,9 +300,19 @@ export class GeneradorPdfService {
 
         doc.rect(x, y, gridColWidth, gridRowHeight).stroke('#E2E8F0');
         if (entradas.length > 0) {
-          doc.rect(x + 1, y + 1, gridColWidth - 2, gridRowHeight - 2).fill(`#${entradas[0].registro.color.slice(2)}`);
-          const texto = entradas.map(({ registro, bloque }) => formatearEtiquetaCelda(registro, bloque)).join('\n');
-          doc.fillColor('#1E293B').font('Helvetica-Bold').fontSize(7).text(texto, x + 1, y + 3, { width: gridColWidth - 2, align: 'center' });
+          const numCols = Math.min(entradas.length, 2);
+          const colW = (gridColWidth - 2) / numCols;
+          
+          entradas.slice(0, 2).forEach((entrada, eIdx) => {
+            const entryX = x + 1 + (eIdx * colW);
+            doc.rect(entryX, y + 1, colW, gridRowHeight - 2).fill(`#${entrada.registro.color.slice(2)}`);
+            const texto = formatearEtiquetaCelda(entrada.registro, entrada.bloque);
+            doc.fillColor('#1E293B').font('Helvetica-Bold').fontSize(6).text(texto, entryX, y + 3, { 
+              width: colW, 
+              align: 'center',
+              lineBreak: true
+            });
+          });
         }
       });
 
@@ -434,13 +454,23 @@ export class GeneradorPdfService {
       doc.fillColor('#1E293B').font('Helvetica-Bold').fontSize(7).text(hora, leftColX, y + 8, { width: gridColWidth, align: 'center' });
       dias.forEach((dia, dIdx) => {
         const x = leftColX + (dIdx + 1) * gridColWidth;
-        const bloque = bloques.find(b => b.dia_semana === dia && b.hora_inicio === hora);
+        const celdasEnHora = bloques.filter(b => b.dia_semana === dia && b.hora_inicio === hora);
+        
         doc.rect(x, y, gridColWidth, gridRowHeight).stroke('#E2E8F0');
-        if (bloque) {
-          const info = mapaDocenteCurso[`${bloque.id_docente}-${bloque.componente.id_oferta}`];
-          doc.rect(x + 1, y + 1, gridColWidth - 2, gridRowHeight - 2).fill(info?.color || '#FFFFFF');
-          doc.fillColor('#1E293B').font('Helvetica-Bold').fontSize(8).text(String(info?.indice || '?'), x, y + 4, { width: gridColWidth, align: 'center' });
-          doc.fontSize(6).font('Helvetica').text(`(Ciclo: ${bloque.componente.oferta.id_ciclo}°)`, x, y + 14, { width: gridColWidth, align: 'center' });
+        if (celdasEnHora.length > 0) {
+          const numCols = Math.min(celdasEnHora.length, 2);
+          const colW = (gridColWidth - 2) / numCols;
+
+          celdasEnHora.slice(0, 2).forEach((bloque, bIdx) => {
+            const entryX = x + 1 + (bIdx * colW);
+            const info = mapaDocenteCurso[`${bloque.id_docente}-${bloque.componente.id_oferta}`];
+            doc.rect(entryX, y + 1, colW, gridRowHeight - 2).fill(info?.color || '#FFFFFF');
+            
+            doc.fillColor('#1E293B').font('Helvetica-Bold').fontSize(7).text(String(info?.indice || '?'), entryX, y + 3, { width: colW, align: 'center' });
+            // Verificamos si existe la propiedad ambiente antes de acceder a ella
+            const ambienteCodigo = (bloque as any).ambiente?.codigo || 'Solic.';
+            doc.fontSize(5).font('Helvetica').text(`(${ambienteCodigo})`, entryX, y + 12, { width: colW, align: 'center' });
+          });
         }
       });
       y += gridRowHeight;

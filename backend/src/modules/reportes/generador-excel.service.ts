@@ -168,27 +168,32 @@ export class GeneradorExcelService {
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    horas.forEach((hora, hIdx) => {
-      const row = startRowHorario + 1 + hIdx;
+    horas.forEach((h, i) => {
+      const row = startRowHorario + 1 + i;
       worksheet.mergeCells(row, 1, row, 2);
       const hourCell = worksheet.getCell(row, 1);
-      hourCell.value = hora;
+      hourCell.value = h;
       hourCell.font = { bold: true, size: 8 };
       hourCell.alignment = { horizontal: 'center', vertical: 'middle' };
       hourCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-      worksheet.getRow(row).height = 25; // Altura más pequeña
+      worksheet.getRow(row).height = 35;
 
-      dias.forEach((dia, dIdx) => {
-        const colStart = gridCols[dIdx + 1].start;
-        const colEnd = gridCols[dIdx + 1].end;
-        worksheet.mergeCells(row, colStart, row, colEnd);
-        const cell = worksheet.getCell(row, colStart);
+      dias.forEach((d, di) => {
+        const cs = gridCols[di + 1].start, ce = gridCols[di + 1].end;
+        worksheet.mergeCells(row, cs, row, ce);
+        const cell = worksheet.getCell(row, cs);
+        const entradas = contexto.celdas[`${d}-${h}`] ?? [];
         
-        const entradas = contexto.celdas[`${dia}-${hora}`] ?? [];
         if (entradas.length > 0) {
-          cell.value = entradas.map(({ registro, bloque }) => formatearEtiquetaCelda(registro, bloque)).join('\n\n');
+          const texto = entradas.map(e => {
+            const grupoEtiqueta = e.registro.tieneMultiplesGrupos ? `Gr. ${e.registro.grupoCodigo}` : '';
+            const ambienteEtiqueta = e.bloque.ambiente?.codigo || 'Solic.';
+            return `${e.registro.indice} | ${grupoEtiqueta} | ${ambienteEtiqueta}`;
+          }).join('\n---\n');
+          
+          cell.value = texto;
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: entradas[0].registro.color } };
-          cell.font = { bold: true, size: 8 };
+          cell.font = { bold: true, size: 7 };
         }
         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
@@ -309,9 +314,9 @@ export class GeneradorExcelService {
 
     // 3. HORARIO
     const startRowHorario = Math.max(currentRow + 2, 12);
-    const dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+    const dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
     const horas = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
-    const gridCols = [{ s: 1, e: 2, l: 'HORA' }, { s: 3, e: 4, l: 'LUNES' }, { s: 5, e: 6, l: 'MARTES' }, { s: 7, e: 8, l: 'MIÉRCOLES' }, { s: 9, e: 10, l: 'JUEVES' }, { s: 11, e: 12, l: 'VIERNES' }];
+    const gridCols = [{ s: 1, e: 2, l: 'HORA' }, { s: 3, e: 4, l: 'LUNES' }, { s: 5, e: 6, l: 'MARTES' }, { s: 7, e: 8, l: 'MIÉRCOLES' }, { s: 9, e: 10, l: 'JUEVES' }, { s: 11, e: 12, l: 'VIERNES' }, { s: 13, e: 14, l: 'SÁBADO' }];
 
     gridCols.forEach(col => {
       worksheet.mergeCells(startRowHorario, col.s, startRowHorario, col.e);
@@ -327,18 +332,24 @@ export class GeneradorExcelService {
       worksheet.mergeCells(row, 1, row, 2);
       worksheet.getCell(row, 1).value = h;
       worksheet.getCell(row, 1).font = { bold: true, size: 8 };
-      worksheet.getRow(row).height = 25;
+      worksheet.getRow(row).height = 35; // Aumentar altura para múltiples cursos
 
       dias.forEach((d, di) => {
         const cs = gridCols[di + 1].s, ce = gridCols[di + 1].e;
         worksheet.mergeCells(row, cs, row, ce);
         const cell = worksheet.getCell(row, cs);
-        const b = bloques.find(bl => bl.dia_semana === d && bl.hora_inicio === h);
-        if (b) {
-          const info = mapaDocenteCurso[`${b.id_docente}-${b.componente.id_oferta}`];
-          cell.value = `${info?.indice || '?'}\n(Ciclo: ${b.componente.oferta.id_ciclo}°)`;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + (info?.color || 'FFFFFF') } };
-          cell.font = { bold: true, size: 8 };
+        const celdasEnHora = bloques.filter(bl => bl.dia_semana === d && bl.hora_inicio === h);
+        
+        if (celdasEnHora.length > 0) {
+          const texto = celdasEnHora.map(b => {
+            const info = mapaDocenteCurso[`${b.id_docente}-${b.componente.id_oferta}`];
+            return `${info?.indice || '?'}\n(Ciclo: ${b.componente.oferta.id_ciclo}°)`;
+          }).join('\n---\n');
+          
+          cell.value = texto;
+          const infoPrimero = mapaDocenteCurso[`${celdasEnHora[0].id_docente}-${celdasEnHora[0].componente.id_oferta}`];
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + (infoPrimero?.color || 'FFFFFF') } };
+          cell.font = { bold: true, size: 7 };
         }
         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
@@ -446,9 +457,9 @@ export class GeneradorExcelService {
 
     // 3. HORARIO
     const startRowHorario = Math.max(currentRow + 2, 12);
-    const dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+    const dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
     const horas = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
-    const gridCols = [{ s: 1, e: 2, l: 'HORA' }, { s: 3, e: 4, l: 'LUNES' }, { s: 5, e: 6, l: 'MARTES' }, { s: 7, e: 8, l: 'MIÉRCOLES' }, { s: 9, e: 10, l: 'JUEVES' }, { s: 11, e: 12, l: 'VIERNES' }];
+    const gridCols = [{ s: 1, e: 2, l: 'HORA' }, { s: 3, e: 4, l: 'LUNES' }, { s: 5, e: 6, l: 'MARTES' }, { s: 7, e: 8, l: 'MIÉRCOLES' }, { s: 9, e: 10, l: 'JUEVES' }, { s: 11, e: 12, l: 'VIERNES' }, { s: 13, e: 14, l: 'SÁBADO' }];
 
     gridCols.forEach(col => {
       ws.mergeCells(startRowHorario, col.s, startRowHorario, col.e);
@@ -469,18 +480,24 @@ export class GeneradorExcelService {
       ws.mergeCells(row, 1, row, 2);
       ws.getCell(row, 1).value = h;
       ws.getCell(row, 1).font = { bold: true, size: 8 };
-      ws.getRow(row).height = 25;
+      ws.getRow(row).height = 35;
 
       dias.forEach((d, di) => {
         const cs = gridCols[di + 1].s, ce = gridCols[di + 1].e;
         ws.mergeCells(row, cs, row, ce);
         const cell = ws.getCell(row, cs);
-        const b = bloques.find(bl => bl.dia_semana === d && bl.hora_inicio === h);
-        if (b) {
-          const info = mapaCursos[b.componente.id_oferta];
-          cell.value = `${info?.indice || '?'}\n(${b.ambiente?.codigo || 'Solic.'})`;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + (info?.color || 'FFFFFF') } };
-          cell.font = { bold: true, size: 8 };
+        const celdasEnHora = bloques.filter(bl => bl.dia_semana === d && bl.hora_inicio === h);
+        
+        if (celdasEnHora.length > 0) {
+          const texto = celdasEnHora.map(b => {
+            const info = mapaCursos[b.componente.id_oferta];
+            return `${info?.indice || '?'}\n(Aula: ${b.ambiente?.codigo || 'Solic.'})`;
+          }).join('\n---\n');
+          
+          cell.value = texto;
+          const infoPrimero = mapaCursos[celdasEnHora[0].componente.id_oferta];
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + (infoPrimero?.color || 'FFFFFF').replace('#', '') } };
+          cell.font = { bold: true, size: 7 };
         }
         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };

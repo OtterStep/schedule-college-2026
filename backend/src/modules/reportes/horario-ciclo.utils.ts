@@ -35,7 +35,7 @@ export function formatearEtiquetaCelda(registro: RegistroHorarioCiclo, bloque: B
 }
 
 export function crearContextoHorarioCiclo(bloques: BloqueHorarioReporteCiclo[]): ContextoHorarioCiclo {
-  const registros = new Map<string, RegistroHorarioCiclo>();
+  const registros = new Map<string, RegistroHorarioCiclo & { gruposSet: Set<string> }>();
   const gruposPorCurso = new Map<number, Set<string>>();
   const coloresPorCurso = new Map<number, string>();
   const celdas = new Map<string, EntradaCeldaHorarioCiclo[]>();
@@ -46,7 +46,8 @@ export function crearContextoHorarioCiclo(bloques: BloqueHorarioReporteCiclo[]):
     const cursoId = bloque.componente.oferta.id_curso;
     const grupoCodigo = bloque.grupo?.codigo?.trim() || 'UNICO';
     const docenteNombre = formatearDocente(bloque.docente);
-    const key = `${cursoId}-${bloque.id_docente}-${grupoCodigo}`;
+    // Agrupamos por curso y docente solamente (eliminamos grupoCodigo de la clave)
+    const key = `${cursoId}-${bloque.id_docente}`;
 
     if (!coloresPorCurso.has(cursoId)) {
       coloresPorCurso.set(cursoId, obtenerColorCurso(coloresPorCurso.size + 1));
@@ -64,7 +65,7 @@ export function crearContextoHorarioCiclo(bloques: BloqueHorarioReporteCiclo[]):
         cursoId,
         cursoNombre: bloque.componente.oferta.curso.nombre,
         docenteNombre,
-        grupoCodigo,
+        grupoCodigo: '', // Se llenará al final
         grupoId: bloque.grupo.id,
         teoria: 0,
         practica: 0,
@@ -72,9 +73,12 @@ export function crearContextoHorarioCiclo(bloques: BloqueHorarioReporteCiclo[]):
         totalHoras: 0,
         departamento: DEPARTAMENTO_FIJO,
         tieneMultiplesGrupos: false,
+        gruposSet: new Set<string>()
       };
       registros.set(key, registro);
     }
+
+    registro.gruposSet.add(grupoCodigo);
 
     const horas = obtenerDuracionHoras(bloque.hora_inicio, bloque.hora_fin);
     if (bloque.componente.tipo === 'TEORIA') registro.teoria += horas;
@@ -88,16 +92,20 @@ export function crearContextoHorarioCiclo(bloques: BloqueHorarioReporteCiclo[]):
     celdas.set(celdaKey, entradas);
   }
 
-  const registrosOrdenados = [...registros.values()].sort((a, b) => a.indice - b.indice);
+  const registrosOrdenados = [...registros.values()]
+    .sort((a, b) => a.indice - b.indice)
+    .map(reg => {
+      // Formatear los códigos de grupo (ej: "A, B" o "UNICO")
+      const gruposArr = Array.from(reg.gruposSet).sort();
+      reg.grupoCodigo = gruposArr.join(', ');
+      reg.tieneMultiplesGrupos = gruposArr.length > 1;
+      return reg;
+    });
+
   const celdasOrdenadas: Record<string, EntradaCeldaHorarioCiclo[]> = {};
 
   for (const [clave, entradas] of celdas.entries()) {
     celdasOrdenadas[clave] = entradas.sort((a, b) => a.registro.indice - b.registro.indice);
-  }
-
-  for (const registro of registrosOrdenados) {
-    const cantidadGrupos = gruposPorCurso.get(registro.cursoId)?.size ?? 1;
-    registro.tieneMultiplesGrupos = cantidadGrupos > 1;
   }
 
   return {

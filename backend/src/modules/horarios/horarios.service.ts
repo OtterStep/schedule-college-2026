@@ -156,7 +156,7 @@ export class HorariosService {
 
     // 2. Validar cruce del CICLO (Promoción)
     // 2.1 En la Base de Datos
-    const conflictoCiclo = await prisma.bloque_horario.findFirst({
+    const conflictosCiclo = await prisma.bloque_horario.findMany({
       where: {
         id_periodo: componente.oferta.id_periodo,
         dia_semana: datos.diaSemana,
@@ -173,10 +173,16 @@ export class HorariosService {
       },
     });
 
-    if (conflictoCiclo) {
-      throw new Error(
-        `El ciclo ${componente.oferta.id_ciclo} ya tiene asignado el curso "${conflictoCiclo.componente.oferta.curso.nombre}" en este horario.`
-      );
+    for (const conflicto of conflictosCiclo) {
+      const esLabActual = componente.tipo === 'LABORATORIO';
+      const esLabConflicto = conflicto.componente.tipo === 'LABORATORIO';
+
+      // Solo se permite el cruce si AMBOS son LABORATORIO
+      if (!(esLabActual && esLabConflicto)) {
+        throw new Error(
+          `El ciclo ya tiene asignado el curso "${conflicto.componente.oferta.curso.nombre}" (${conflicto.componente.tipo}) en este horario. Solo se permiten cruces entre componentes de LABORATORIO.`
+        );
+      }
     }
 
     // 2.2 En selecciones temporales (Redis)
@@ -188,8 +194,14 @@ export class HorariosService {
           where: { id: sel.idComponente },
           include: { oferta: true },
         });
+
         if (compSel?.oferta.id_ciclo === idCiclo && sel.idDocente !== datos.idDocente) {
-          throw new Error('Este ciclo ya tiene una selección temporal en este horario por otro docente.');
+          const esLabActual = componente.tipo === 'LABORATORIO';
+          const esLabTemporal = compSel.tipo === 'LABORATORIO';
+
+          if (!(esLabActual && esLabTemporal)) {
+            throw new Error('Este ciclo ya tiene una selección temporal en este horario por otro docente. Solo se permiten cruces entre componentes de LABORATORIO.');
+          }
         }
       }
     }
@@ -215,9 +227,20 @@ export class HorariosService {
           hora_inicio: datos.horaInicio,
           estado: { in: ['BORRADOR', 'CONFIRMADO', 'PUBLICADO'] },
         },
+        include: {
+          componente: true
+        }
       });
+
       if (conflictoAmbiente) {
-        throw new Error('El ambiente ya está ocupado en ese bloque horario');
+        const esLabActual = componente.tipo === 'LABORATORIO';
+        const esLabConflicto = conflictoAmbiente.componente.tipo === 'LABORATORIO';
+        const esAmbienteLab = ambiente.tipo === 'LABORATORIO';
+
+        // Si es un ambiente de laboratorio y ambos componentes son LABORATORIO, se permite compartir el ambiente
+        if (!(esAmbienteLab && esLabActual && esLabConflicto)) {
+          throw new Error('El ambiente ya está ocupado en ese bloque horario');
+        }
       }
     }
   }

@@ -14,7 +14,7 @@ interface Props {
   modo?: 'EDICION' | 'LECTURA';
 }
 
-const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 const HORAS = Array.from({ length: 15 }, (_, i) => {
   const h = i + 7;
   return `${h.toString().padStart(2, '0')}:00`;
@@ -215,41 +215,44 @@ export function CalendarioGeneral({ idPeriodo, filtroTipo, filtroId, ambienteAsi
             </tr>
           </thead>
           <tbody>
-            {HORAS.map((hora) => (
-              <tr key={hora} className="group hover:bg-slate-50 transition-colors">
-                <td className="p-2 text-xs font-medium text-gray-500 text-center border-r border-b border-gray-100 align-top">
-                  {hora}
-                  <div className="text-[10px] text-gray-400 mt-1">{(parseInt(hora, 10) + 1).toString().padStart(2, '0')}:00</div>
-                </td>
-                {DIAS.map((dia) => {
-                  const clasesEnCelda = getCelda(dia, hora);
-                  let isAlmuerzo = false;
-                  if (configuracion) {
-                    const horaInt = parseInt(hora.split(':')[0], 10);
-                    const inicioInt = parseInt(configuracion.almuerzoInicio.split(':')[0], 10);
-                    const finInt = parseInt(configuracion.almuerzoFin.split(':')[0], 10);
-                    isAlmuerzo = horaInt >= inicioInt && horaInt < finInt;
-                  }
+            {HORAS.map((hora) => {
+              const horaFin = `${(parseInt(hora, 10) + 1).toString().padStart(2, '0')}:00`;
+              return (
+                <tr key={hora} className="group hover:bg-slate-50 transition-colors">
+                  <td className="p-2 text-[11px] font-bold text-gray-600 text-center border-r border-b border-gray-100 align-middle w-32 bg-slate-50/30">
+                    {hora} - {horaFin}
+                  </td>
+                  {DIAS.map((dia) => {
+                    const clasesEnCelda = getCelda(dia, hora);
+                    let isAlmuerzo = false;
+                    /* (DESACTIVADO según requerimiento)
+                    if (configuracion) {
+                      const horaInt = parseInt(hora.split(':')[0], 10);
+                      const inicioInt = parseInt(configuracion.almuerzoInicio.split(':')[0], 10);
+                      const finInt = parseInt(configuracion.almuerzoFin.split(':')[0], 10);
+                      isAlmuerzo = horaInt >= inicioInt && horaInt < finInt;
+                    }
+                    */
 
-                  const isShaking = dragErrorShake?.dia === dia && dragErrorShake?.hora === hora;
+                    const isShaking = dragErrorShake?.dia === dia && dragErrorShake?.hora === hora;
                   let isSmartHighlighted = false;
                   if (draggedItem && !isAlmuerzo) {
                     if (clasesEnCelda.length > 0) isSmartHighlighted = true;
                   }
 
                   return (
-                    <td
-                      key={`${dia}-${hora}`}
-                      onDragOver={(e) => handleDragOver(e, dia, hora)}
-                      onDrop={(e) => handleDrop(e, dia, hora)}
-                      className={`p-1 border-r border-b border-gray-100 relative min-h-[80px] align-top transition-all duration-200
-                        ${isAlmuerzo ? 'bg-slate-50/50 crosshatch-pattern' : 'bg-white hover:bg-unt-primary/5'}
-                        ${isSmartHighlighted ? 'bg-red-50/50 ring-1 ring-inset ring-red-200' : ''}
-                        ${draggedItem && !isAlmuerzo && !isSmartHighlighted ? 'bg-emerald-50/20' : ''}
-                      `}
-                    >
-                      <div className={`flex flex-col gap-1 min-h-[60px] p-1 ${isShaking ? 'animate-shake' : ''}`}>
-                        {clasesEnCelda.map((clase: any, idx: number) => {
+                      <td
+                        key={`${dia}-${hora}`}
+                        onDragOver={(e) => handleDragOver(e, dia, hora)}
+                        onDrop={(e) => handleDrop(e, dia, hora)}
+                        className={`p-1 border-r border-b border-gray-100 relative min-h-[80px] align-top transition-all duration-200
+                          ${isAlmuerzo ? 'bg-slate-50/50 crosshatch-pattern' : 'bg-white hover:bg-unt-primary/5'}
+                          ${isSmartHighlighted ? 'bg-red-50/50 ring-1 ring-inset ring-red-200' : ''}
+                          ${draggedItem && !isAlmuerzo && !isSmartHighlighted ? 'bg-emerald-50/20' : ''}
+                        `}
+                      >
+                        <div className={`grid ${clasesEnCelda.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-1 min-h-[60px] p-1 ${isShaking ? 'animate-shake' : ''}`}>
+                          {clasesEnCelda.map((clase: any, idx: number) => {
                           const cursoNombre =
                             clase.componente?.oferta?.curso?.nombre ||
                             clase.grupo?.componente?.oferta?.curso?.nombre ||
@@ -314,7 +317,8 @@ export function CalendarioGeneral({ idPeriodo, filtroTipo, filtroId, ambienteAsi
                   );
                 })}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

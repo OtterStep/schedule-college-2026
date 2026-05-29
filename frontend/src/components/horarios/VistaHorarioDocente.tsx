@@ -18,12 +18,12 @@ interface VistaHorarioDocenteProps {
   alQuitarCelda: (seleccion: SeleccionTemporal) => void;
 }
 
-const diasOrden = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+const diasOrden = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 const horas = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
 
 export function VistaHorarioDocente({ selecciones, alQuitarCelda }: VistaHorarioDocenteProps) {
-  const obtenerSeleccion = (dia: string, hora: string) =>
-    selecciones.find((s) => s.diaSemana === dia && s.horaInicio === hora);
+  const obtenerSelecciones = (dia: string, hora: string) =>
+    selecciones.filter((s) => s.diaSemana === dia && s.horaInicio === hora);
 
   if (!selecciones.length) {
     return (
@@ -53,38 +53,55 @@ export function VistaHorarioDocente({ selecciones, alQuitarCelda }: VistaHorario
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 bg-white">
-          {horas.map((hora) => (
-            <tr key={hora} className="hover:bg-gray-50/30 transition-colors">
-              <td className="border-r border-gray-200 px-3 py-2 text-center font-medium bg-gray-50/50 text-gray-500">{hora}</td>
-              {diasOrden.map((dia) => {
-                const sel = obtenerSeleccion(dia, hora);
+          {horas.map((hora) => {
+            const horaFin = `${(parseInt(hora.split(':')[0]) + 1).toString().padStart(2, '0')}:00`;
+            return (
+              <tr key={hora} className="hover:bg-gray-50/30 transition-colors">
+                <td className="border-r border-gray-200 px-3 py-2 text-center font-medium bg-gray-50/50 text-gray-500 w-32">
+                  {hora} - {horaFin}
+                </td>
+                {diasOrden.map((dia) => {
+                const items = obtenerSelecciones(dia, hora);
+                const hasItems = items.length > 0;
+                
                 return (
                   <td
                     key={dia + hora}
                     className={cn(
-                      'border-r border-gray-200 px-3 py-2 text-center transition-all duration-150',
-                      sel ? (
-                        sel.publicado
-                          ? 'bg-blue-600 text-white cursor-not-allowed opacity-90 font-medium'
-                          : sel.confirmado
-                            ? 'bg-blue-50 border-2 border-blue-200 text-blue-800 hover:bg-blue-100 cursor-pointer font-medium hover:scale-[1.01] hover:shadow-sm'
-                            : 'bg-yellow-50 border-2 border-yellow-200 text-yellow-800 hover:bg-yellow-100 cursor-pointer font-medium hover:scale-[1.01] hover:shadow-sm'
-                      ) : 'text-gray-300'
+                      'border-r border-gray-200 px-1 py-1 text-center transition-all duration-150',
+                      hasItems ? 'bg-gray-50' : 'text-gray-300'
                     )}
-                    onClick={() => sel && !sel.publicado && alQuitarCelda(sel)}
-                    title={sel ? (sel.publicado ? 'Bloque publicado (Bloqueado)' : sel.confirmado ? 'Bloque confirmado (Haz clic para quitar)' : 'Selección temporal (Haz clic para quitar)') : ''}
                   >
-                    {sel ? (
-                      <div className="flex flex-col items-center justify-center leading-tight">
-                        <span className="font-semibold">{sel.nombreCurso}</span>
-                        <span className="text-[10px] opacity-90 mt-0.5">{sel.tipoComponente} • G{sel.codigoGrupo} • {sel.codigoAmbiente}</span>
+                    {hasItems ? (
+                      <div className="flex flex-col gap-1">
+                        {items.map((sel, idx) => (
+                          <div
+                            key={idx}
+                            className={cn(
+                              'p-1.5 rounded border transition-all duration-150',
+                              sel.publicado
+                                ? 'bg-blue-600 text-white cursor-not-allowed opacity-90 font-medium'
+                                : sel.confirmado
+                                  ? 'bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 cursor-pointer font-medium hover:scale-[1.01] hover:shadow-sm'
+                                  : 'bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100 cursor-pointer font-medium hover:scale-[1.01] hover:shadow-sm'
+                            )}
+                            onClick={() => !sel.publicado && alQuitarCelda(sel)}
+                            title={sel.publicado ? 'Bloque publicado (Bloqueado)' : sel.confirmado ? 'Bloque confirmado (Haz clic para quitar)' : 'Selección temporal (Haz clic para quitar)'}
+                          >
+                            <div className="flex flex-col items-center justify-center leading-tight">
+                              <span className="font-semibold">{sel.nombreCurso}</span>
+                              <span className="text-[9px] opacity-90 mt-0.5">{sel.tipoComponente} • G{sel.codigoGrupo} • {sel.codigoAmbiente}</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ) : '-'}
                   </td>
                 );
               })}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
