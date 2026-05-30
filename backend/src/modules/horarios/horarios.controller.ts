@@ -8,7 +8,8 @@ import {
   confirmarSeleccionSchema, 
   cambiarEstadoSchema,
   publicarSchema,
-  generarHorariosSchema
+  generarHorariosSchema,
+  resetearHorariosSchema
 } from './horarios.schema';
 import { prisma } from '@/lib/prisma';
 import { PublicadorHorarios } from './publicador-horarios.service';
@@ -292,5 +293,15 @@ export class HorariosController {
       res.status(400).json({ error: error.message });
       }
     }
+    }
+
+    static async resetearHorarios(req: Request, res: Response) {
+      try {
+        const { idPeriodo } = resetearHorariosSchema.parse(req.body);
+        const resultado = await HorariosService.resetearHorarios(idPeriodo);
+        res.json(resultado);
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
     }
 }

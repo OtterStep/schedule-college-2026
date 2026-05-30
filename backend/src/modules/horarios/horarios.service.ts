@@ -399,4 +399,29 @@ export class HorariosService {
       orderBy: [{ hora_inicio: 'asc' }],
     });
   }
+
+  /**
+   * Resetear todos los horarios de un periodo
+   */
+  static async resetearHorarios(idPeriodo: number) {
+    // 1. Limpiar selecciones temporales en Redis (opcional pero recomendado)
+    // Podríamos iterar sobre todos los docentes o usar un patrón de borrado masivo
+    // Por ahora nos enfocamos en la base de datos que es lo definitivo
+    
+    // 2. Eliminar todos los bloques horarios del periodo
+    const resultado = await prisma.bloque_horario.deleteMany({
+      where: { id_periodo: idPeriodo }
+    });
+
+    // 3. Notificar a través de Redis para refrescar interfaces
+    await redis.publish(
+      'canal:disponibilidad',
+      JSON.stringify({ tipo: 'reseteo_global', idPeriodo })
+    );
+
+    return { 
+      mensaje: `Se han eliminado ${resultado.count} bloques horarios del periodo.`,
+      cantidad: resultado.count
+    };
+  }
 }

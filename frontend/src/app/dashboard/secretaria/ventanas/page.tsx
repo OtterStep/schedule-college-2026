@@ -5,13 +5,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { periodosService } from '@/services/periodos.service';
 import { ventanasService } from '@/services/ventanas.service';
+import { horariosService } from '@/services/horarios.service';
 import { Boton } from '@/components/ui/Boton';
 import { Selector } from '@/components/ui/Selector';
 import { SpinnerCarga } from '@/components/ui/SpinnerCarga';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
 import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/utilidades';
-import { Edit2, Check, Clock, Calendar as CalendarIcon, X, AlertCircle, Trash2 } from 'lucide-react';
+import { Edit2, Check, Clock, Calendar as CalendarIcon, X, AlertCircle, Trash2, RotateCcw, Send, Power } from 'lucide-react';
+import { ModalConfirmacion } from '@/components/ui/ModalConfirmacion';
 
 const formatearFecha = (fecha?: string | Date) => {
   if (!fecha) return '';
@@ -67,6 +69,13 @@ export default function VentanasSecretariaPage() {
   const [toast, setToast] = useState<{ mensaje: string; tipo: 'exito' | 'error' } | null>(null);
   const [mostrarEdicion, setMostrarEdicion] = useState(false);
   const [turnoAEditar, setTurnoAEditar] = useState<any>(null);
+  const [confirmacion, setConfirmacion] = useState<{
+    titulo: string;
+    mensaje: string;
+    tipo: 'peligro' | 'pregunta' | 'info';
+    onConfirm: () => void;
+    textoConfirmar?: string;
+  } | null>(null);
   const [edicionTurno, setEdicionTurno] = useState({
     fecha: '',
     horaInicio: '',
@@ -104,8 +113,12 @@ export default function VentanasSecretariaPage() {
       queryClient.invalidateQueries({ queryKey: ['ventanas-secretaria', idPeriodo] });
       setToast({ mensaje: 'Horario de atención actualizado', tipo: 'exito' });
       setMostrarEdicion(false);
+      setConfirmacion(null);
     },
-    onError: (error: any) => setToast({ mensaje: error.response?.data?.error || 'Error al actualizar', tipo: 'error' }),
+    onError: (error: any) => {
+      setToast({ mensaje: error.response?.data?.error || 'Error al actualizar', tipo: 'error' });
+      setConfirmacion(null);
+    },
   });
 
   const desactivarMutation = useMutation({
@@ -114,8 +127,12 @@ export default function VentanasSecretariaPage() {
       queryClient.invalidateQueries({ queryKey: ['ventanas-secretaria', idPeriodo] });
       setToast({ mensaje: 'Ventanas desactivadas', tipo: 'exito' });
       setMostrarEdicion(false);
+      setConfirmacion(null);
     },
-    onError: (error: any) => setToast({ mensaje: error.response?.data?.error || 'Error al desactivar', tipo: 'error' }),
+    onError: (error: any) => {
+      setToast({ mensaje: error.response?.data?.error || 'Error al desactivar', tipo: 'error' });
+      setConfirmacion(null);
+    },
   });
 
   const enviarCorreosMutation = useMutation({
@@ -127,8 +144,25 @@ export default function VentanasSecretariaPage() {
         mensaje: `Correos enviados: ${enviados}${errores ? `, errores: ${errores}` : ''}`,
         tipo: errores > 0 ? 'error' : 'exito',
       });
+      setConfirmacion(null);
     },
-    onError: (error: any) => setToast({ mensaje: error.response?.data?.error || 'Error al enviar correos', tipo: 'error' }),
+    onError: (error: any) => {
+      setToast({ mensaje: error.response?.data?.error || 'Error al enviar correos', tipo: 'error' });
+      setConfirmacion(null);
+    },
+  });
+
+  const resetearHorariosMutation = useMutation({
+    mutationFn: () => horariosService.resetear(idPeriodo as number),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ['ventanas-secretaria', idPeriodo] });
+      setToast({ mensaje: res.data?.mensaje || 'Horarios reseteados correctamente', tipo: 'exito' });
+      setConfirmacion(null);
+    },
+    onError: (error: any) => {
+      setToast({ mensaje: error.response?.data?.error || 'Error al resetear horarios', tipo: 'error' });
+      setConfirmacion(null);
+    },
   });
 
   const actualizarTurnoMutation = useMutation({
@@ -153,9 +187,12 @@ export default function VentanasSecretariaPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ventanas-secretaria', idPeriodo] });
       setToast({ mensaje: 'Turno desactivado correctamente', tipo: 'exito' });
+      setConfirmacion(null);
     },
-    onError: (error: any) =>
-      setToast({ mensaje: error.response?.data?.error || 'Error al desactivar turno', tipo: 'error' }),
+    onError: (error: any) => {
+      setToast({ mensaje: error.response?.data?.error || 'Error al desactivar turno', tipo: 'error' });
+      setConfirmacion(null);
+    },
   });
 
   // Flatten ventanas → filas de docente con estado de tiempo real calculado
@@ -308,23 +345,53 @@ export default function VentanasSecretariaPage() {
                 variante="secundario"
                 onClick={() => {
                   if (!idPeriodo || totalVentanas === 0) return;
-                  if (confirm('¿Enviar correos a todos los docentes de las ventanas?')) {
-                    enviarCorreosMutation.mutate();
-                  }
+                  setConfirmacion({
+                    titulo: '¿Enviar notificaciones?',
+                    mensaje: 'Se enviará un correo electrónico a cada docente con los detalles de su turno asignado.',
+                    tipo: 'pregunta',
+                    textoConfirmar: 'Enviar correos',
+                    onConfirm: () => enviarCorreosMutation.mutate(),
+                  });
                 }}
                 disabled={!idPeriodo || totalVentanas === 0 || enviarCorreosMutation.isPending}
               >
-                {enviarCorreosMutation.isPending ? 'Enviando correos...' : 'Enviar correos'}
+                <Send className="w-4 h-4 mr-2" />
+                {enviarCorreosMutation.isPending ? 'Enviando...' : 'Enviar correos'}
               </Boton>
               <Boton
                 variante="peligro"
                 onClick={() => {
                   if (!idPeriodo) return;
-                  if (confirm('¿Desactivar todas las ventanas de este periodo?')) desactivarMutation.mutate();
+                  setConfirmacion({
+                    titulo: '¿Desactivar todas las ventanas?',
+                    mensaje: 'Esta acción invalidará todos los turnos actuales. Los docentes ya no podrán acceder al sistema hasta que se genere una nueva ventana.',
+                    tipo: 'peligro',
+                    textoConfirmar: 'Desactivar ahora',
+                    onConfirm: () => desactivarMutation.mutate(),
+                  });
                 }}
                 disabled={!idPeriodo || desactivarMutation.isPending}
               >
+                <Power className="w-4 h-4 mr-2" />
                 {desactivarMutation.isPending ? 'Desactivando...' : 'Desactivar todo'}
+              </Boton>
+              <Boton
+                variante="peligro"
+                onClick={() => {
+                  if (!idPeriodo) return;
+                  setConfirmacion({
+                    titulo: '¿RESETEAR TODOS LOS HORARIOS?',
+                    mensaje: '⚠️ ¡ALERTA CRÍTICA! Esta acción ELIMINARÁ PERMANENTEMENTE todos los bloques horarios registrados en este periodo. No se puede deshacer.',
+                    tipo: 'peligro',
+                    textoConfirmar: 'SÍ, RESETEAR TODO',
+                    onConfirm: () => resetearHorariosMutation.mutate(),
+                  });
+                }}
+                disabled={!idPeriodo || resetearHorariosMutation.isPending}
+                className="bg-rose-600 hover:bg-rose-700"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                {resetearHorariosMutation.isPending ? 'Reseteando...' : 'Resetear Horarios'}
               </Boton>
             </div>
           </div>
@@ -468,12 +535,16 @@ export default function VentanasSecretariaPage() {
                         </button>
                         <button
                           onClick={() => {
-                            if (confirm(`¿Desactivar turno de ${fila.docente}?`)) {
-                              desactivarTurnoMutation.mutate({
+                            setConfirmacion({
+                              titulo: '¿Desactivar turno individual?',
+                              mensaje: `Se cancelará el turno asignado a ${fila.docente}.`,
+                              tipo: 'peligro',
+                              textoConfirmar: 'Confirmar',
+                              onConfirm: () => desactivarTurnoMutation.mutate({
                                 idVentana: fila.idVentana,
                                 idDocente: fila.idDocente,
-                              });
-                            }
+                              }),
+                            });
                           }}
                           className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                           title="Desactivar turno"
@@ -490,6 +561,24 @@ export default function VentanasSecretariaPage() {
           </div>
         )}
       </div>
+
+      {confirmacion && (
+        <ModalConfirmacion
+          isOpen={!!confirmacion}
+          onClose={() => setConfirmacion(null)}
+          onConfirm={confirmacion.onConfirm}
+          titulo={confirmacion.titulo}
+          mensaje={confirmacion.mensaje}
+          tipo={confirmacion.tipo}
+          textoConfirmar={confirmacion.textoConfirmar}
+          isLoading={
+            enviarCorreosMutation.isPending || 
+            desactivarMutation.isPending || 
+            resetearHorariosMutation.isPending || 
+            desactivarTurnoMutation.isPending
+          }
+        />
+      )}
 
       <Modal
         isOpen={!!turnoAEditar}

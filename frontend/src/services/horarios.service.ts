@@ -21,6 +21,7 @@ export const horariosService = {
     publicar: (idPeriodo: number) => apiClient.post('/horarios/publicar', { idPeriodo }),
     despublicar: (idPeriodo: number) => apiClient.post('/horarios/despublicar', { idPeriodo }),
     generarAutomatico: (datos: any) => apiClient.post('/horarios/generar-automatico', datos),
+    resetear: (idPeriodo: number) => apiClient.post('/horarios/resetear', { idPeriodo }),
     obtenerConflictos: (idPeriodo: number) => apiClient.get('/horarios/conflictos', { params: { idPeriodo } }),
     listarHorarios: (filtros?: any) => apiClient.get('/horarios', { params: filtros }),
 };

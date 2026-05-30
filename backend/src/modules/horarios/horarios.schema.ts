@@ -47,3 +47,7 @@ export const generarHorariosSchema = z.object({
   modoPrueba: z.boolean().optional(),
   metodo: z.enum(['HEURISTICO', 'GENETICO']).optional(),
 });
+
+export const resetearHorariosSchema = z.object({
+  idPeriodo: z.number().int().positive(),
+});
